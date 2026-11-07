@@ -395,5 +395,6 @@ describe('Expense Tracker Backend Core Test Suite', () => {
       assert.strictEqual(dashboardRes.status, 200);
       assert.strictEqual(dashboardRes.body.data.metrics.savingsRate, -45.08);
     });
+
   });
 });

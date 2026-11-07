@@ -84,6 +84,88 @@ export const getTransactions = async (req, res, next) => {
   }
 };
 
+const csvCell = (value) => {
+  let text = String(value ?? '').replace(/[\r\n]+/g, ' ');
+  if (/^[\u0000-\u0020\uFEFF]*[=+\-@]/.test(text)) text = `'${text}`;
+  return `"${text.replace(/"/g, '""')}"`;
+};
+
+const getTransactionsForMonth = async (userId, month, year) => {
+  const startDate = new Date(Date.UTC(year, month - 1, 1));
+  const nextMonth = new Date(Date.UTC(year, month, 1));
+  const transactions = await Transaction.find({
+    user: userId,
+    date: { $gte: startDate, $lt: nextMonth },
+  })
+    .populate({ path: 'category', select: 'name', match: { user: userId } })
+    .populate({ path: 'paymentMethod', select: 'name', match: { user: userId } })
+    .sort({ date: 1, _id: 1 })
+    .lean();
+
+  return transactions.map((transaction) => ({
+    date: transaction.date ? new Date(transaction.date).toISOString().slice(0, 10) : '',
+    type: transaction.type,
+    title: transaction.title,
+    category: transaction.category?.name || '',
+    paymentMethod: transaction.paymentMethod?.name || '',
+    amount: transaction.amount,
+    note: transaction.note || '',
+  }));
+};
+
+export const getMonthlyTransactionExportData = async (req, res, next) => {
+  try {
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+    const transactions = await getTransactionsForMonth(req.user._id, month, year);
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json({ success: true, month, year, data: transactions });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const exportTransactions = async (req, res, next) => {
+  try {
+    const month = Number(req.query.month);
+    const year = Number(req.query.year);
+    const transactions = await getTransactionsForMonth(req.user._id, month, year);
+    const dateFormatter = new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    });
+    const weekdayFormatter = new Intl.DateTimeFormat('en-IN', { weekday: 'short', timeZone: 'UTC' });
+    const rows = [
+      ['Date', 'Type', 'Title', 'Category', 'Payment Method', 'Amount (INR)', 'Note'],
+      ...transactions.map((transaction) => [
+        transaction.date
+          ? `${dateFormatter.format(new Date(`${transaction.date}T00:00:00.000Z`))} (${weekdayFormatter.format(new Date(`${transaction.date}T00:00:00.000Z`))})`
+          : '',
+        transaction.type,
+        transaction.title,
+        transaction.category,
+        transaction.paymentMethod,
+        (transaction.amount / 100).toFixed(2),
+        transaction.note,
+      ]),
+    ];
+    const csv = `\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}`;
+    const monthLabel = String(month).padStart(2, '0');
+
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="wealthpulse-transactions-${year}-${monthLabel}.csv"`,
+      'Cache-Control': 'no-store',
+      'X-Content-Type-Options': 'nosniff',
+    });
+    return res.status(200).send(csv);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const getTransactionById = async (req, res, next) => {
   try {
     const transaction = await Transaction.findOne({

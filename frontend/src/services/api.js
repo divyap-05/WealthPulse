@@ -27,3 +27,17 @@ export const apiRequest = async (endpoint, options = {}) => {
 
   return data;
 };
+
+export const apiDownload = async (endpoint) => {
+  const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  const response = await fetch(url, { credentials: 'include' });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    const error = new Error(data.message || 'Unable to download this file.');
+    error.status = response.status;
+    throw error;
+  }
+
+  return response.blob();
+};

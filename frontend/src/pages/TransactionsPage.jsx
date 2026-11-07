@@ -13,10 +13,27 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Download,
+  FileText,
 } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
-import { apiRequest } from '../services/api';
+import { apiDownload, apiRequest } from '../services/api';
 import { formatINR, formatDate, toRupees } from '../utils/formatters';
+
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[character]));
+
+const formatExportDate = (value) => new Intl.DateTimeFormat('en-IN', {
+  day: '2-digit',
+  month: 'short',
+  year: 'numeric',
+  timeZone: 'UTC',
+}).format(new Date(`${value}T00:00:00.000Z`));
 
 export const TransactionsPage = () => {
   const [transactions, setTransactions] = useState([]);
@@ -25,6 +42,11 @@ export const TransactionsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
+  const [exportMonth, setExportMonth] = useState(() => {
+    const today = new Date();
+    return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [exporting, setExporting] = useState(false);
 
   // Filters & Search
   const [search, setSearch] = useState('');
@@ -169,6 +191,191 @@ export const TransactionsPage = () => {
     }
   };
 
+  const handleDownloadMonth = async () => {
+    if (!exportMonth) return;
+    setError('');
+    setExporting(true);
+
+    try {
+      const [year, month] = exportMonth.split('-');
+      const blob = await apiDownload(`/transactions/export.csv?month=${month}&year=${year}`);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `wealthpulse-transactions-${year}-${month}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setError(err.message || 'Unable to download transactions.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!exportMonth) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      setError('Allow pop-ups to create the PDF.');
+      return;
+    }
+
+    printWindow.opener = null;
+    setError('');
+    setExporting(true);
+
+    try {
+      const [year, month] = exportMonth.split('-');
+      const response = await apiRequest(`/transactions/export.json?month=${month}&year=${year}`);
+      const transactionsForPrint = response.data || [];
+      const monthName = new Date(Number(year), Number(month) - 1, 1)
+        .toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+      const totals = transactionsForPrint.reduce((sum, transaction) => {
+        if (transaction.type === 'income') sum.income += transaction.amount;
+        if (transaction.type === 'expense') sum.expenses += transaction.amount;
+        return sum;
+      }, { income: 0, expenses: 0 });
+      const netCashFlow = totals.income - totals.expenses;
+      const tableRows = transactionsForPrint.map((transaction) => `
+        <tr>
+          <td class="date-cell">${escapeHtml(formatExportDate(transaction.date))}</td>
+          <td>
+            <div class="transaction-title">${escapeHtml(transaction.title)}</div>
+            <div class="transaction-meta">
+              <span class="type ${transaction.type === 'income' ? 'income' : 'expense'}">${escapeHtml(transaction.type)}</span>
+              <span>${escapeHtml(transaction.category)}</span>
+              <span>${escapeHtml(transaction.paymentMethod || 'No payment method')}</span>
+            </div>
+            ${transaction.note ? `<div class="transaction-note">${escapeHtml(transaction.note)}</div>` : ''}
+          </td>
+          <td class="amount">${escapeHtml(formatINR(transaction.amount))}</td>
+        </tr>`).join('');
+      const html = `<!doctype html>
+        <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1" />
+            <meta name="referrer" content="no-referrer" />
+            <title>WealthPulse Monthly Transactions ${escapeHtml(year)}-${escapeHtml(month)}</title>
+            <style>
+              @page { size: A4 portrait; margin: 13mm; }
+              * { box-sizing: border-box; }
+              html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              html, body { margin: 0; min-height: 100%; }
+              body { background: #f1f5f9; color: #0f172a; font: 9.5pt Arial, sans-serif; padding: 68px 18px 18px; }
+              .preview-toolbar { align-items: center; background: #fff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 3px 12px rgba(15,23,42,.08); display: flex; justify-content: space-between; left: 0; padding: 10px 18px; position: fixed; right: 0; top: 0; z-index: 2; }
+              .toolbar-title { color: #334155; font-size: 9pt; font-weight: 700; }
+              .toolbar-help { color: #64748b; font-size: 8pt; margin-left: 10px; }
+              .toolbar-actions { display: flex; gap: 8px; }
+              .toolbar-button { background: #fff; border: 1px solid #cbd5e1; border-radius: 7px; color: #334155; cursor: pointer; font: 700 8.5pt Arial, sans-serif; padding: 8px 12px; }
+              .toolbar-button.primary { background: #6d28d9; border-color: #6d28d9; color: white; }
+              .report-page { background: #fff; box-shadow: 0 12px 34px rgba(15,23,42,.12); display: flex; flex-direction: column; margin: 0 auto; min-height: 297mm; padding: 13mm; width: min(100%, 210mm); }
+              header { align-items: center; border-bottom: 2px solid #8B5CF6; display: flex; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; }
+              .brand-lockup { align-items: center; display: flex; gap: 9px; }
+              .brand-logo { height: 36px; width: 36px; }
+              .brand-name { color: #4c1d95; font-size: 20pt; font-weight: 800; letter-spacing: -.04em; }
+              .report-badge { background: #f3e8ff; border: 1px solid #e9d5ff; border-radius: 999px; color: #6d28d9; font-size: 8pt; font-weight: 700; letter-spacing: .08em; padding: 7px 10px; text-transform: uppercase; }
+              h1 { color: #1e1b4b; font-size: 18pt; letter-spacing: -.03em; margin: 0 0 4px; }
+              .subtitle { color: #64748b; margin: 0; }
+              .report-title { margin: 0 0 14px; }
+              .summary { display: flex; gap: 9px; margin: 13px 0 18px; }
+              .summary-card { background: #faf8ff; border: 1px solid #e9d5ff; border-radius: 9px; flex: 1; min-width: 0; padding: 10px 11px; }
+              .summary-card span { color: #64748b; display: block; font-size: 7.5pt; font-weight: 700; letter-spacing: .06em; margin-bottom: 5px; text-transform: uppercase; }
+              .summary-card strong { color: #1e1b4b; font-size: 11pt; }
+              table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+              th, td { border-bottom: 1px solid #e2e8f0; overflow-wrap: anywhere; padding: 9px 7px; text-align: left; vertical-align: top; }
+              th { background: #4c1d95; color: #fff; font-size: 7.5pt; letter-spacing: .07em; text-transform: uppercase; }
+              td { font-size: 8.5pt; }
+              tbody tr:nth-child(even) { background: #faf8ff; }
+              th:nth-child(1), td:nth-child(1) { white-space: nowrap; width: 19%; }
+              th:nth-child(2), td:nth-child(2) { width: 57%; }
+              th:nth-child(3), td:nth-child(3) { text-align: right; width: 24%; }
+              tr { break-inside: avoid; }
+              thead { display: table-header-group; }
+              .date-cell { color: #475569; font-size: 8pt; }
+              .transaction-title { color: #0f172a; font-size: 9pt; font-weight: 700; line-height: 1.35; }
+              .transaction-meta { align-items: center; color: #64748b; display: flex; flex-wrap: wrap; font-size: 7.5pt; gap: 5px 8px; margin-top: 4px; }
+              .type { border-radius: 999px; font-size: 7pt; font-weight: 700; padding: 2px 6px; text-transform: capitalize; }
+              .type.income { background: #dcfce7; color: #166534; }
+              .type.expense { background: #ffe4e6; color: #9f1239; }
+              .income-total { color: #15803d !important; }
+              .expense-total { color: #be123c !important; }
+              .transaction-note { color: #64748b; font-size: 7.5pt; line-height: 1.35; margin-top: 4px; }
+              .amount { color: #1e1b4b; font-size: 8.5pt; font-weight: 700; white-space: nowrap; }
+              .empty { color: #64748b; padding: 18px 7px; }
+              footer { border-top: 1px solid #e2e8f0; color: #64748b; display: flex; font-size: 7.5pt; justify-content: space-between; margin-top: auto; padding-top: 9px; }
+              @media print {
+                body { background: #fff; min-height: 0; padding: 0; }
+                .preview-toolbar { display: none; }
+                .report-page { box-shadow: none; display: block; margin: 0; min-height: 0; padding: 0; width: auto; }
+                footer { margin-top: 15px; }
+              }
+              @media screen and (max-width: 620px) {
+                body { padding: 62px 8px 8px; }
+                .preview-toolbar { padding: 9px; }
+                .toolbar-help { display: none; }
+                .toolbar-button { padding: 8px; }
+                .report-page { min-height: calc(100vh - 70px); padding: 18px 13px; }
+                .summary { gap: 5px; }
+                .summary-card { padding: 8px 6px; }
+                .summary-card strong { font-size: 9pt; }
+              }
+            </style>
+          </head>
+          <body>
+            <div class="preview-toolbar">
+              <div><span class="toolbar-title">PDF preview</span><span class="toolbar-help">Use “Save as PDF” in the print dialog.</span></div>
+              <div class="toolbar-actions">
+                <button class="toolbar-button primary" id="save-pdf" type="button">Save as PDF</button>
+                <button class="toolbar-button" id="close-preview" type="button">Close</button>
+              </div>
+            </div>
+            <main class="report-page">
+            <header>
+              <div class="brand-lockup">
+                <svg class="brand-logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                  <defs><linearGradient id="wealthpulse-gradient" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#A78BFA"/></linearGradient></defs>
+                  <rect width="32" height="32" rx="9" fill="url(#wealthpulse-gradient)"/>
+                  <g transform="translate(4 4)" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/></g>
+                </svg>
+                <span class="brand-name">WealthPulse</span>
+              </div>
+              <span class="report-badge">Monthly report</span>
+            </header>
+            <section class="report-title">
+              <h1>Transactions</h1>
+              <p class="subtitle">${escapeHtml(monthName)} · ${transactionsForPrint.length} transaction${transactionsForPrint.length === 1 ? '' : 's'} · Amounts in INR</p>
+            </section>
+            <section class="summary" aria-label="Monthly totals">
+              <div class="summary-card"><span>Total income</span><strong class="income-total">${escapeHtml(formatINR(totals.income))}</strong></div>
+              <div class="summary-card"><span>Total expenses</span><strong class="expense-total">${escapeHtml(formatINR(totals.expenses))}</strong></div>
+              <div class="summary-card"><span>Net cash flow</span><strong class="${netCashFlow < 0 ? 'expense-total' : 'income-total'}">${escapeHtml(formatINR(netCashFlow))}</strong></div>
+            </section>
+            <table>
+              <thead><tr><th>Date</th><th>Transaction details</th><th>Amount</th></tr></thead>
+              <tbody>${tableRows || '<tr><td class="empty" colspan="3">No transactions for this month.</td></tr>'}</tbody>
+            </table>
+            <footer><span>WealthPulse · Monthly financial activity</span><span>${escapeHtml(monthName)}</span></footer>
+            </main>
+          </body>
+        </html>`;
+
+      printWindow.document.open();
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.document.getElementById('save-pdf')?.addEventListener('click', () => printWindow.print());
+      printWindow.document.getElementById('close-preview')?.addEventListener('click', () => printWindow.close());
+      printWindow.focus();
+    } catch (err) {
+      printWindow.close();
+      setError(err.message || 'Unable to prepare the PDF.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const filteredCategories = categories.filter((c) => c.type === formData.type);
 
   return (
@@ -179,14 +386,54 @@ export const TransactionsPage = () => {
           <p className="text-xs text-slate-400 mt-1">Manage personal income inflows and expense disbursements</p>
         </div>
 
-        <button
-          onClick={handleOpenAddModal}
-          className="px-4 py-2.5 rounded-xl bg-brand-primary hover:bg-purple-600 text-white font-semibold text-sm transition-all shadow-lg shadow-purple-500/20 flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Record Transaction</span>
-        </button>
+        <div className="flex flex-wrap items-end gap-2">
+          <div>
+            <label htmlFor="transaction-export-month" className="block mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Export month</label>
+            <input
+              id="transaction-export-month"
+              type="month"
+              min="2020-01"
+              max="2100-12"
+              value={exportMonth}
+              onChange={(event) => setExportMonth(event.target.value)}
+              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-300 focus:outline-none focus:border-brand-primary"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={handleDownloadMonth}
+            disabled={exporting || !exportMonth}
+            className="px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 disabled:opacity-50 font-semibold text-sm transition-colors flex items-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            <span>{exporting ? 'Preparing…' : 'Download CSV'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={exporting || !exportMonth}
+            className="px-3 py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-slate-200 disabled:opacity-50 font-semibold text-sm transition-colors flex items-center gap-2"
+            title="Opens the print dialog, where you can save the month as a PDF."
+          >
+            <FileText className="w-4 h-4" />
+            <span>{exporting ? 'Preparing…' : 'Download PDF'}</span>
+          </button>
+          <button
+            onClick={handleOpenAddModal}
+            className="px-4 py-2.5 rounded-xl bg-brand-primary hover:bg-purple-600 text-white font-semibold text-sm transition-all shadow-lg shadow-purple-500/20 flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Record Transaction</span>
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="mb-5 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm flex items-center gap-2" role="alert">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
       {/* Filter and Search Bar */}
       <div className="glass-surface p-4 rounded-2xl border border-white/10 mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">

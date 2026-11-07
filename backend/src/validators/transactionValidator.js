@@ -46,3 +46,10 @@ export const getTransactionsQuerySchema = z.object({
     sortOrder: z.enum(['asc', 'desc']).optional(),
   }),
 });
+
+export const exportTransactionsQuerySchema = z.object({
+  query: z.object({
+    month: z.string().regex(/^(?:[1-9]|1[0-2])$/),
+    year: z.string().regex(/^(?:202\d|20[3-9]\d|2100)$/),
+  }),
+});
