@@ -9,7 +9,7 @@ export const getDashboardSummary = async (req, res, next) => {
     const userId = req.user._id;
 
     // Trigger recurring engine
-    await processRecurringTransactions(userId);
+    if (!req.user.isDemo) await processRecurringTransactions(userId);
 
     const { period = 'month', startDate: qStart, endDate: qEnd } = req.query;
     const now = new Date();
@@ -72,7 +72,9 @@ export const getDashboardSummary = async (req, res, next) => {
     const totalIncome = incomeTotalRes.length > 0 ? incomeTotalRes[0].total : 0;
     const totalExpenses = expenseTotalRes.length > 0 ? expenseTotalRes[0].total : 0;
     const netCashFlow = totalIncome - totalExpenses;
-    const savingsRate = totalIncome > 0 ? Math.max(0, Math.round((netCashFlow / totalIncome) * 100)) : 0;
+    const savingsRate = totalIncome > 0
+      ? Math.sign(netCashFlow) * Math.round((Math.abs(netCashFlow) / totalIncome) * 10000) / 100
+      : 0;
 
     // Monthly spending trend over last 6 months
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
@@ -90,6 +92,31 @@ export const getDashboardSummary = async (req, res, next) => {
       },
       { $sort: { '_id.year': 1, '_id.month': 1 } },
     ]);
+
+    const budgetsWithProgress = await Promise.all(activeBudgets.map(async (budget) => {
+      const dateStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const dateEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      const match = {
+        user: userId,
+        type: 'expense',
+        date: { $gte: dateStart, $lte: dateEnd },
+      };
+      if (budget.category) match.category = budget.category._id;
+
+      const [spending] = await Transaction.aggregate([
+        { $match: match },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]);
+      const spent = spending?.total || 0;
+      const percentageUsed = budget.amount > 0 ? Math.round((spent / budget.amount) * 100) : 0;
+      return {
+        ...budget.toObject(),
+        spent,
+        remaining: budget.amount - spent,
+        percentageUsed,
+        isExceeded: spent > budget.amount,
+      };
+    }));
 
     res.status(200).json({
       success: true,
@@ -111,10 +138,12 @@ export const getDashboardSummary = async (req, res, next) => {
           total: c.total,
         })),
         recentTransactions,
-        activeBudgets,
+        activeBudgets: budgetsWithProgress,
         savingsGoals: savingsGoals.map((g) => ({
           ...g,
-          percentage: g.targetAmount > 0 ? Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100)) : 0,
+          percentage: Number.isFinite(g.targetAmount) && g.targetAmount > 0 && Number.isFinite(g.currentAmount)
+            ? Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 10000) / 100)
+            : 0,
         })),
         monthlyTrends,
         insights,

@@ -18,15 +18,17 @@ export const register = async (req, res, next) => {
     }
 
     // Generate email verification token
-    const verificationToken = crypto.randomBytes(32).toString('hex');
-    const verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+    const verificationToken = config.email.isConfigured ? crypto.randomBytes(32).toString('hex') : null;
+    const verificationTokenExpires = verificationToken ? Date.now() + 24 * 60 * 60 * 1000 : null;
 
     const user = new User({
       name,
       email,
       password,
       isVerified: false,
-      verificationToken,
+      verificationToken: verificationToken
+        ? crypto.createHash('sha256').update(verificationToken).digest('hex')
+        : undefined,
       verificationTokenExpires,
     });
 
@@ -35,15 +37,17 @@ export const register = async (req, res, next) => {
     // Seed default categories & payment methods for this user
     await seedUserDefaults(user._id);
 
-    // Send verification email (or mock in development)
-    const emailResult = await sendVerificationEmail({
-      to: user.email,
-      token: verificationToken,
-      name: user.name,
-    });
+    // Send verification email when SMTP is configured.
+    if (verificationToken) {
+      await sendVerificationEmail({
+        to: user.email,
+        token: verificationToken,
+        name: user.name,
+      });
+    }
 
     // Auto-login upon registration for seamless experience
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.authTokenVersion || 0);
     setAuthCookie(res, token);
 
     res.status(201).json({
@@ -51,8 +55,7 @@ export const register = async (req, res, next) => {
       message: 'Registration successful!',
       emailStatus: config.email.isConfigured
         ? 'Verification email sent.'
-        : 'Email delivery not configured in this environment. Account created.',
-      mockVerificationUrl: emailResult.mockUrl || undefined,
+        : 'Email delivery is not configured. Email verification and password recovery are unavailable.',
       user: {
         id: user._id,
         name: user.name,
@@ -70,7 +73,7 @@ export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password +authTokenVersion');
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -86,7 +89,7 @@ export const login = async (req, res, next) => {
       });
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user._id, user.authTokenVersion || 0);
     setAuthCookie(res, token);
 
     res.status(200).json({
@@ -167,7 +170,7 @@ export const updateProfile = async (req, res, next) => {
 export const changePassword = async (req, res, next) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const user = await User.findById(req.user._id).select('+password');
+    const user = await User.findById(req.user._id).select('+password +authTokenVersion');
 
     if (user.isDemo) {
       return res.status(403).json({
@@ -185,7 +188,9 @@ export const changePassword = async (req, res, next) => {
     }
 
     user.password = newPassword;
+    user.authTokenVersion += 1;
     await user.save();
+    setAuthCookie(res, generateToken(user._id, user.authTokenVersion));
 
     res.status(200).json({
       success: true,
@@ -197,43 +202,56 @@ export const changePassword = async (req, res, next) => {
 };
 
 export const forgotPassword = async (req, res, next) => {
+  if (!config.email.isConfigured) {
+    res.set('Cache-Control', 'no-store');
+    return res.status(503).json({
+      success: false,
+      message: 'Password recovery is unavailable because email delivery is not configured.',
+    });
+  }
+
+  const requestStartedAt = Date.now();
+  const genericMessage = 'If an account exists with that email, a password reset link has been sent.';
+
   try {
     const { email } = req.body;
     const user = await User.findOne({ email });
 
-    // Always respond with success to prevent user email enumeration
-    if (!user) {
-      return res.status(200).json({
-        success: true,
-        message: 'If an account exists with that email, a password reset link has been generated.',
-      });
+    if (user) {
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+      user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+      await user.save();
+
+      // Send out of band so mailbox delivery time cannot reveal account existence.
+      sendPasswordResetEmail({
+        to: user.email,
+        token: resetToken,
+        name: user.name,
+      }).catch(() => console.error('[Email Delivery] Password reset email could not be sent.'));
     }
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
-    await user.save();
+    // Keep status, response fields, and a minimum response duration consistent
+    // for existing and non-existing accounts.
+    const remainingDelay = Math.max(0, 250 - (Date.now() - requestStartedAt));
+    if (remainingDelay > 0) await new Promise((resolve) => setTimeout(resolve, remainingDelay));
 
-    const emailResult = await sendPasswordResetEmail({
-      to: user.email,
-      token: resetToken,
-      name: user.name,
-    });
-
-    res.status(200).json({
-      success: true,
-      message: 'If an account exists with that email, a password reset link has been generated.',
-      emailStatus: config.email.isConfigured
-        ? 'Reset link sent.'
-        : 'Email delivery not configured in this environment.',
-      mockResetUrl: emailResult.mockUrl || undefined,
-    });
+    res.set('Cache-Control', 'no-store');
+    return res.status(200).json({ success: true, message: genericMessage });
   } catch (error) {
     next(error);
   }
 };
 
 export const resetPassword = async (req, res, next) => {
+  if (!config.email.isConfigured) {
+    res.set('Cache-Control', 'no-store');
+    return res.status(503).json({
+      success: false,
+      message: 'Password recovery is unavailable because email delivery is not configured.',
+    });
+  }
+
   try {
     const { token, password } = req.body;
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
@@ -241,7 +259,7 @@ export const resetPassword = async (req, res, next) => {
     const user = await User.findOne({
       resetPasswordToken: hashedToken,
       resetPasswordExpires: { $gt: Date.now() },
-    });
+    }).select('+authTokenVersion');
 
     if (!user) {
       return res.status(400).json({
@@ -251,6 +269,7 @@ export const resetPassword = async (req, res, next) => {
     }
 
     user.password = password;
+    user.authTokenVersion += 1;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
@@ -274,8 +293,9 @@ export const verifyEmail = async (req, res, next) => {
       });
     }
 
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
     const user = await User.findOne({
-      verificationToken: token,
+      verificationToken: hashedToken,
       verificationTokenExpires: { $gt: Date.now() },
     });
 

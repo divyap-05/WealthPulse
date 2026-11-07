@@ -48,6 +48,11 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    authTokenVersion: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
     preferences: {
       currency: {
         type: String,
@@ -90,6 +95,7 @@ userSchema.methods.toJSON = function () {
   delete obj.verificationTokenExpires;
   delete obj.resetPasswordToken;
   delete obj.resetPasswordExpires;
+  delete obj.authTokenVersion;
   return obj;
 };
 

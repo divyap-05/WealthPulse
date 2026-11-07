@@ -15,15 +15,7 @@ export const seedDemoUserAndData = async () => {
   let demoUser = await User.findOne({ email: DEMO_USER_EMAIL });
 
   if (demoUser) {
-    // Clean up existing demo data to keep demo fresh & pristine
-    await Promise.all([
-      Transaction.deleteMany({ user: demoUser._id }),
-      Budget.deleteMany({ user: demoUser._id }),
-      SavingsGoal.deleteMany({ user: demoUser._id }),
-      RecurringTransaction.deleteMany({ user: demoUser._id }),
-      Category.deleteMany({ user: demoUser._id }),
-      PaymentMethod.deleteMany({ user: demoUser._id }),
-    ]);
+    return demoUser;
   } else {
     demoUser = new User({
       name: 'Aarav Sharma (Demo)',
@@ -260,7 +252,7 @@ export const seedDemoUserAndData = async () => {
 export const enterDemoAccount = async (req, res, next) => {
   try {
     const demoUser = await seedDemoUserAndData();
-    const token = generateToken(demoUser._id);
+    const token = generateToken(demoUser._id, demoUser.authTokenVersion || 0);
     setAuthCookie(res, token);
 
     res.status(200).json({

@@ -10,10 +10,10 @@ export const connectDB = async (customUri = null) => {
     const conn = await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 4000,
     });
-    console.log(`[Database] MongoDB Connected: ${conn.connection.host}`);
+    console.log('[Database] MongoDB connected.');
     return conn;
   } catch (error) {
-    console.warn(`[Database Warning] Could not connect to primary MongoDB at ${uri}: ${error.message}`);
+    console.warn('[Database Warning] Could not connect to the configured MongoDB database.');
     
     // In development mode, auto-fallback to embedded mongodb-memory-server so demo and local dev ALWAYS work zero-setup!
     if (config.env !== 'production') {
@@ -26,7 +26,7 @@ export const connectDB = async (customUri = null) => {
         console.log(`[Database] Embedded Local MongoDB Connected: ${conn.connection.host}`);
         return conn;
       } catch (memError) {
-        console.error(`[Database Error] Embedded MongoDB fallback failed:`, memError.message);
+        console.error('[Database Error] Embedded MongoDB fallback failed.');
       }
     } else {
       process.exit(1);

@@ -1,161 +1,160 @@
-# WealthPulse - Full-Stack Multi-User Expense Tracker
+# WealthPulse
 
-WealthPulse is a responsive, multi-user personal finance and expense tracking web application engineered with a **dark luxury fintech** aesthetic. It provides complete multi-tenant workspaces where each user has private records for incomes, expenses, monthly budgets, savings goals, automated recurring commitments, and transparent rule-based financial analytics.
+WealthPulse is a full-stack personal finance tracker for organizing income, expenses, budgets, savings goals, and recurring transactions in a private account. Its dashboard summarizes cash flow and presents charts and transparent, rule-based financial insights.
 
----
+## Features
 
-## 1. Key Features
+- Account registration, login, profile settings, and password changes for signed-in users. Email verification and password recovery require configured SMTP delivery.
+- Expense and income records with categories, payment methods, search, filters, and pagination.
+- Monthly overall and category budgets with spending and over-limit tracking.
+- Savings goals with deposits and withdrawals.
+- Scheduled recurring transaction rules.
+- Dashboard summaries, spending charts, reports, and rule-based financial insights.
+- Interactive demo account and dark/light themes.
 
-- **Multi-Tenant Account Isolation**: Strict server-side ownership enforcement on every read, create, update, and delete operation.
-- **1-Click Instant Demo Experience**: Demo button initializes and resets a canonical mock financial profile with realistic data without exposing real user information.
-- **Decimal-Safe Financial Architecture**: Financial amounts stored safely as minor unit integers (paise) to prevent floating-point calculation anomalies. Formatted in standard Indian Rupee (₹ INR).
-- **Interactive Financial Dashboard**:
-  - Net cash flow, period income, expense totals, and savings rate.
-  - Interactive Donut chart breakdown of category expenses using Recharts.
-  - Recent activity ledger with instant category color indicators.
-  - Dynamic monthly budget and savings goal progress bars.
-- **Transparent Rule-Based Smart Insights**:
-  - Highlights top spending categories and month-over-month surging expenses.
-  - Monitors budget thresholds (approaching/exceeded warnings).
-  - Evaluates personal savings rates against 20% healthy financial benchmarks.
-  - Flags upcoming recurring bills due within the next 7 days.
-- **Transactions Ledger**: Search by keyword, filter by income/expense type, categories, and date ranges with pagination and sorting.
-- **Monthly Budgets**: Set spending caps on overall expenses or specific categories with configurable alert thresholds (e.g., 80%).
-- **Savings Goals**: Track financial reserves (emergency funds, vacations) with dedicated deposit and withdrawal adjustment flows.
-- **Automated Recurring Commitments**: Daily, weekly, monthly, or yearly recurring rules with duplicate generation safeguards.
-- **Taxonomy Customization**: Create and organize custom income/expense categories and manual payment instruments (UPI, Credit Cards, Cash).
-- **Security & Session Management**:
-  - Password hashing with `bcryptjs`.
-  - Secure JWT authentication stored in HTTP-only cookies (`SameSite`, `HttpOnly`, `Secure` in production).
-  - Rate limiting on authentication and password reset routes.
-  - Request validation using Zod.
-  - Safe development email mocking when SMTP is not configured.
-- **Responsive Dark Luxury Glassmorphism UI**: Built with Tailwind CSS, custom glass surfaces, and responsive desktop sidebar + mobile drawer. Includes persistent Dark/Light mode toggle.
+## Technology stack
 
----
+- **Frontend:** React 18, Vite, React Router, Tailwind CSS, Recharts, Lucide React.
+- **Backend:** Node.js, Express 4, Mongoose, Zod.
+- **Database:** MongoDB. Local development defaults to `mongodb://localhost:27017/expense_tracker`; development can fall back to `mongodb-memory-server` when the configured database is unavailable.
+- **Authentication:** bcryptjs password hashing and seven-day JWTs in HTTP-only cookies.
+- **Supporting tools:** Nodemailer for email, Helmet for security headers, express-rate-limit, and Node's built-in test runner with Supertest and mongodb-memory-server.
 
-## 2. Technology Stack
-
-### Frontend
-- **React** (v18) & **Vite**
-- **JavaScript** (ES Modules)
-- **Tailwind CSS** (Dark Luxury multicolor theme)
-- **React Router** (v7)
-- **Recharts** (2D responsive charts)
-- **Lucide React** (Fintech iconography)
-
-### Backend
-- **Node.js** (v24) & **Express.js**
-- **MongoDB** & **Mongoose**
-- **Zod** (Schema validation)
-- **bcryptjs** (Password hashing)
-- **jsonwebtoken** (JWT authentication via HTTP-only cookies)
-- **Helmet** & **CORS** & **express-rate-limit** (Security headers and throttling)
-- **Nodemailer** (Graceful fallback email service)
-
----
-
-## 3. Directory Structure
+## Repository layout
 
 ```text
-Expense Tracker/
+.
 ├── backend/
 │   ├── src/
-│   │   ├── config/          # Environment and MongoDB connection
-│   │   ├── controllers/     # Route business logic (auth, tx, budget, goals, recurring, analytics)
-│   │   ├── middleware/      # Auth protect, zod validation, error handler, rate limits
-│   │   ├── models/          # Mongoose schemas (User, Transaction, Category, Budget, etc.)
-│   │   ├── routes/          # Express route definitions
-│   │   ├── services/        # Email mock service, recurring engine, insights generator
-│   │   ├── utils/           # Currency decimal conversions, token cookie helpers, demo seed
-│   │   ├── app.js           # Express app setup
-│   │   └── server.js        # Server listener
-│   ├── tests/               # Node test runner suite (auth, multi-user isolation, demo)
-│   ├── .env.example
+│   │   ├── config/       # Environment and MongoDB setup
+│   │   ├── controllers/  # API handlers
+│   │   ├── middleware/   # Authentication, validation, rate limits, errors
+│   │   ├── models/       # Mongoose models
+│   │   ├── routes/       # Express routes
+│   │   ├── services/     # Email, insights, recurring transactions
+│   │   ├── utils/        # Tokens, currency, seed helpers
+│   │   └── validators/   # Zod request schemas
+│   ├── tests/            # Backend API tests
 │   └── package.json
 ├── frontend/
+│   ├── public/           # Static assets and favicon
 │   ├── src/
-│   │   ├── components/      # Layout (sidebar, topbar), common cards, charts
-│   │   ├── context/         # AuthContext & ThemeContext
-│   │   ├── pages/           # Dashboard, Transactions, Budgets, Goals, Recurring, Reports, etc.
-│   │   ├── services/        # Fetch API wrapper with cookie credentials
-│   │   ├── utils/           # INR currency and date formatters
-│   │   ├── App.jsx          # Route definitions & protected guards
-│   │   └── main.jsx
+│   │   ├── components/   # Shared UI and layout
+│   │   ├── context/      # Authentication and theme state
+│   │   ├── pages/        # Application screens
+│   │   ├── services/     # API client
+│   │   └── utils/        # Formatting helpers
 │   ├── index.html
-│   ├── tailwind.config.js
-│   ├── vite.config.js
-│   ├── .env.example
 │   └── package.json
-├── GEMINI.md
-└── README.md
+├── README.md
+└── DEPLOYMENT.md
 ```
 
----
+## Local setup
 
-## 4. Local Setup Instructions
+### Requirements
 
-### Prerequisites
-- Node.js (v18+)
-- Local MongoDB or MongoDB Atlas URI
+- Node.js 18 or newer and npm.
+- MongoDB locally, or a MongoDB connection string you can use for development. The backend includes an in-memory MongoDB fallback for development when its package can start successfully.
 
-### 1. Configure Backend
-Navigate to `/backend`:
+### 1. Clone and install
+
 ```bash
+git clone <repository-url>
+cd <repository-directory>
 cd backend
-cp .env.example .env
+npm install
+cd ../frontend
+npm install
+cd ..
 ```
-Edit `.env` to configure your MongoDB connection string and JWT secret:
+
+### 2. Configure environment variables
+
+Create your own `backend/.env` and `frontend/.env` files. The `.env` files are ignored by Git; never commit real credentials. The frontend file can be empty for local use because Vite proxies `/api` to the backend. Frontend variables are public in the built application, so only use them for non-secret configuration.
+
+**Frontend environment variables**
+
+| Name | Required | Purpose |
+| --- | --- | --- |
+| `VITE_API_URL` | Optional | API base URL; defaults to `/api`. For a separately hosted backend, set this to its API base URL ending in `/api`. This value is public. |
+
+Example `frontend/.env`:
+
 ```env
+# Optional; omit to use the local Vite /api proxy.
+VITE_API_URL=http://localhost:5000/api
+```
+
+**Backend environment variables**
+
+| Name | Required | Purpose |
+| --- | --- | --- |
+| `JWT_SECRET` | Yes | Private signing key for authentication tokens. |
+| `COOKIE_SECRET` | Production | Private cookie-parser signing key; production must use at least 32 characters. |
+| `MONGODB_URI` | Optional locally; required in production | MongoDB connection URI; local default is `mongodb://localhost:27017/expense_tracker`. |
+| `PORT` | Optional | HTTP port; defaults to `5000`. |
+| `NODE_ENV` | Optional | Runtime mode; use `development` locally and `production` on the server. |
+| `FRONTEND_URL` | Optional locally; required in production | Exact HTTPS frontend origin allowed by CORS and cookie-authenticated requests; local default is `http://localhost:5173`. |
+| `EMAIL_HOST` | Optional | SMTP server hostname. Configure SMTP as a complete set to send verification and password reset messages. |
+| `EMAIL_PORT` | Optional | SMTP port; defaults to `587`. |
+| `EMAIL_USER` | Optional | SMTP username. |
+| `EMAIL_PASS` | Optional | Private SMTP password. |
+| `EMAIL_FROM` | Optional | Sender display address; defaults to a local placeholder. |
+
+Example `backend/.env` (replace placeholders with your own local values):
+
+```env
+NODE_ENV=development
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/expense_tracker
-JWT_SECRET=replace_with_a_long_random_jwt_secret_at_least_32_characters_long
+JWT_SECRET=replace-with-your-own-development-secret
+COOKIE_SECRET=replace-with-your-own-cookie-secret
 FRONTEND_URL=http://localhost:5173
+# Optional SMTP settings; omit them to disable email verification and password recovery.
+EMAIL_HOST=
+EMAIL_PORT=587
+EMAIL_USER=
+EMAIL_PASS=
+EMAIL_FROM=WealthPulse <noreply@example.test>
 ```
-*Note: SMTP email fields are optional. When omitted, verification links and reset links are safely displayed in development logs without blocking registration.*
 
-Install dependencies and start backend:
-```bash
-npm install
-npm run dev
-```
+Backend variables are private and must never be prefixed with `VITE_` or placed in the frontend `.env`. Email verification and password recovery work only when SMTP is configured. Without SMTP, the app does not generate or log mock links, and password recovery is disabled; signed-in users can still change their password from Profile settings. Production requires both private secrets to be configured, and the JWT secret and cookie secret must each be at least 32 characters. Protect these credentials and keep actual `.env` files out of source control.
 
-### 2. Configure Frontend
-Navigate to `/frontend`:
-```bash
-cd frontend
-cp .env.example .env
-```
-Install dependencies and launch Vite development server:
-```bash
-npm install
-npm run dev
-```
-Open [http://localhost:5173](http://localhost:5173) in your browser.
+### 3. Start the backend
 
----
+In a terminal from the repository root:
 
-## 5. Running Tests
-
-Run the automated backend test suite (testing multi-user data isolation, password hashing, and demo seeding):
 ```bash
 cd backend
-npm test
+npm run dev
 ```
 
----
+The API listens on `http://localhost:5000`; its health endpoint is `http://localhost:5000/api/health`.
 
-## 6. Accessing Demo Mode
+### 4. Start the frontend
 
-Visitors can test the application without creating an account:
-1. Navigate to the landing page or login screen.
-2. Click **"Instant Demo Login (1-Click)"**.
-3. The server generates an isolated, pristine demo profile with pre-populated transactions, active budgets, recurring rules, and smart insights.
+In a second terminal:
 
----
+```bash
+cd frontend
+npm run dev
+```
 
-## 7. Known Limitations & Future Enhancements
+Open [http://localhost:5173](http://localhost:5173). Vite forwards `/api` requests to `http://localhost:5000`.
 
-- **Bank Aggregation & Payment Gateways**: In line with the initial release specifications, money transfer gateways and bank sync are disabled; all transactions are manually tracked.
-- **Export Formats**: Future iterations can add CSV / PDF transaction ledger downloads.
-- **Shared Split Balances**: Multi-party group expense splitting can be implemented in subsequent phases.
+## Checks
+
+Run backend tests with `cd backend && npm test`. Build the frontend with `cd frontend && npm run build`. The frontend package does not currently define a lint script.
+
+## Security overview
+
+Passwords are hashed with bcryptjs. Authentication uses expiring JWTs in HTTP-only cookies, password changes invalidate earlier sessions, protected routes derive ownership from the authenticated user, sensitive auth endpoints are rate-limited, request bodies are validated with Zod, and Helmet sets HTTP security headers. Keep backend secrets server-side and never commit credentials. Email links are sent only through configured SMTP; the app does not write verification or reset links to logs or API responses.
+
+## Future improvements
+
+Possible follow-up work includes downloadable transaction reports and bank data integration. These are not currently implemented.
+
+## Contributing
+
+Please open an issue to discuss a substantial change, then submit a focused pull request with a clear description and relevant verification results. No license file is currently included in the repository.

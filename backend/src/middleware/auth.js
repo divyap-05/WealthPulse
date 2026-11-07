@@ -15,15 +15,19 @@ export const protect = async (req, res, next) => {
     }
 
     // Verify token
-    const decoded = jwt.verify(token, config.jwtSecret);
+    const decoded = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'] });
 
     // Find user
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).select('+authTokenVersion');
     if (!user) {
       return res.status(401).json({
         success: false,
         message: 'User belonging to this token no longer exists.',
       });
+    }
+
+    if ((decoded.tokenVersion ?? 0) !== user.authTokenVersion) {
+      return res.status(401).json({ success: false, message: 'Your session has expired. Please log in again.' });
     }
 
     req.user = user;
@@ -40,4 +44,14 @@ export const protect = async (req, res, next) => {
       message: 'Invalid authentication token.',
     });
   }
+};
+
+export const blockDemoWrites = (req, res, next) => {
+  if (req.user?.isDemo && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Demo account data is read-only.',
+    });
+  }
+  next();
 };

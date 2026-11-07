@@ -19,7 +19,7 @@ export const createPaymentMethod = async (req, res, next) => {
 
     const existing = await PaymentMethod.findOne({
       user: req.user._id,
-      name: { $regex: new RegExp(`^${name}$`, 'i') },
+      name: { $regex: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
     });
 
     if (existing) {

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Sparkles, Lock, Mail, User, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { LineChart, Sparkles, Lock, Mail, User, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { PasswordInput } from '../components/ui/PasswordInput';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 export const RegisterPage = () => {
   const [name, setName] = useState('');
@@ -43,11 +45,12 @@ export const RegisterPage = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-6 selection:bg-brand-primary">
+      <ThemeToggle className="fixed right-5 top-5 z-50" />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-3 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-105 transition-transform">
-              <Sparkles className="w-5 h-5 text-white" />
+              <LineChart className="w-5 h-5 text-white" />
             </div>
             <span className="font-extrabold text-2xl tracking-tight text-white">WealthPulse</span>
           </Link>
@@ -111,8 +114,7 @@ export const RegisterPage = () => {
               </label>
               <div className="relative">
                 <Lock className="w-5 h-5 text-slate-500 absolute left-3.5 top-3" />
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={8}
                   value={password}

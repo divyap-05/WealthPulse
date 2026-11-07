@@ -3,9 +3,10 @@ import { config } from '../config/env.js';
 
 const COOKIE_NAME = 'auth_token';
 
-export const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, config.jwtSecret, {
+export const generateToken = (userId, tokenVersion = 0) => {
+  return jwt.sign({ id: userId, tokenVersion }, config.jwtSecret, {
     expiresIn: '7d',
+    algorithm: 'HS256',
   });
 };
 
@@ -13,7 +14,7 @@ export const setAuthCookie = (res, token) => {
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     secure: config.env === 'production',
-    sameSite: config.env === 'production' ? 'strict' : 'lax',
+    sameSite: config.env === 'production' ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
     path: '/',
   });
@@ -23,7 +24,7 @@ export const clearAuthCookie = (res) => {
   res.clearCookie(COOKIE_NAME, {
     httpOnly: true,
     secure: config.env === 'production',
-    sameSite: config.env === 'production' ? 'strict' : 'lax',
+    sameSite: config.env === 'production' ? 'none' : 'lax',
     path: '/',
   });
 };

@@ -256,14 +256,14 @@ export const SavingsGoalsPage = () => {
                   <div
                     className="h-full rounded-full transition-all duration-500"
                     style={{
-                      width: `${g.percentage}%`,
+                      width: `${Math.min(100, Math.max(0, Number(g.percentage) || 0))}%`,
                       backgroundColor: g.color || '#22C55E',
                     }}
                   />
                 </div>
 
                 <div className="flex items-center justify-between text-xs mb-4">
-                  <span className="font-bold text-slate-200">{g.percentage}% achieved</span>
+                  <span className="font-bold text-slate-200">{Number(g.percentage || 0).toFixed(2)}% achieved</span>
                   {g.isCompleted ? (
                     <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-[11px]">
                       <CheckCircle2 className="w-3.5 h-3.5" />

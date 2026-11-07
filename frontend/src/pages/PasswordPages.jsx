@@ -1,20 +1,27 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sparkles, Mail, ArrowRight, AlertCircle, CheckCircle, KeyRound } from 'lucide-react';
+import { LineChart, Sparkles, Mail, ArrowRight, AlertCircle, CheckCircle, KeyRound } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { PasswordInput } from '../components/ui/PasswordInput';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 export const ForgotPasswordPage = () => {
   const [email, setEmail] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [mockLink, setMockLink] = useState('');
   const [loading, setLoading] = useState(false);
+  const [recoveryAvailable, setRecoveryAvailable] = useState(null);
+
+  useEffect(() => {
+    apiRequest('/health')
+      .then((res) => setRecoveryAvailable(res.emailConfigured === true))
+      .catch(() => setRecoveryAvailable(false));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setMessage('');
-    setMockLink('');
     setLoading(true);
 
     try {
@@ -23,9 +30,6 @@ export const ForgotPasswordPage = () => {
         body: JSON.stringify({ email }),
       });
       setMessage(res.message);
-      if (res.mockResetUrl) {
-        setMockLink(res.mockResetUrl);
-      }
     } catch (err) {
       setError(err.message || 'Error processing request.');
     } finally {
@@ -35,16 +39,17 @@ export const ForgotPasswordPage = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-6 selection:bg-brand-primary">
+      <ThemeToggle className="fixed right-5 top-5 z-50" />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-3 group">
             <div className="w-10 h-10 rounded-xl bg-brand-primary flex items-center justify-center shadow-lg shadow-purple-500/20">
-              <Sparkles className="w-5 h-5 text-white" />
+              <LineChart className="w-5 h-5 text-white" />
             </div>
             <span className="font-extrabold text-2xl tracking-tight text-white">WealthPulse</span>
           </Link>
           <h2 className="text-xl font-bold text-slate-200">Reset Your Password</h2>
-          <p className="text-sm text-slate-400 mt-1">Enter your registered email to receive a recovery link</p>
+          <p className="text-sm text-slate-400 mt-1">Password recovery requires email delivery.</p>
         </div>
 
         <div className="glass-surface p-8 rounded-2xl border border-white/10 shadow-2xl">
@@ -61,17 +66,16 @@ export const ForgotPasswordPage = () => {
                 <CheckCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
                 <span>{message}</span>
               </div>
-              {mockLink && (
-                <div className="mt-3 p-3 bg-black/40 rounded-lg text-xs break-all border border-emerald-500/20">
-                  <span className="block text-slate-300 font-semibold mb-1">Local Dev Mock Link:</span>
-                  <a href={mockLink} className="text-brand-secondary underline hover:text-white">
-                    {mockLink}
-                  </a>
-                </div>
-              )}
             </div>
           )}
 
+          {recoveryAvailable === false ? (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm" role="status">
+              Password recovery is unavailable because email delivery is not configured. If you are signed in, you can change your password from Profile settings.
+            </div>
+          ) : recoveryAvailable === null ? (
+            <p className="text-sm text-slate-400 text-center" role="status">Checking password recovery availability…</p>
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
@@ -98,6 +102,7 @@ export const ForgotPasswordPage = () => {
               {loading ? <span>Sending...</span> : <span>Send Reset Instructions</span>}
             </button>
           </form>
+          )}
         </div>
 
         <p className="text-center text-sm text-slate-400 mt-6">
@@ -117,9 +122,16 @@ export const ResetPasswordPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [recoveryAvailable, setRecoveryAvailable] = useState(null);
 
   const queryParams = new URLSearchParams(window.location.search);
   const token = queryParams.get('token');
+
+  useEffect(() => {
+    apiRequest('/health')
+      .then((res) => setRecoveryAvailable(res.emailConfigured === true))
+      .catch(() => setRecoveryAvailable(false));
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -152,6 +164,7 @@ export const ResetPasswordPage = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-6 selection:bg-brand-primary">
+      <ThemeToggle className="fixed right-5 top-5 z-50" />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-10 h-10 rounded-xl bg-brand-primary flex items-center justify-center shadow-lg shadow-purple-500/20 mx-auto mb-3">
@@ -169,7 +182,13 @@ export const ResetPasswordPage = () => {
             </div>
           )}
 
-          {success ? (
+          {recoveryAvailable === false ? (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-sm" role="status">
+              Password recovery is unavailable because email delivery is not configured. If you are signed in, you can change your password from Profile settings.
+            </div>
+          ) : recoveryAvailable === null ? (
+            <p className="text-sm text-slate-400 text-center" role="status">Checking password recovery availability…</p>
+          ) : success ? (
             <div className="text-center py-4">
               <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle className="w-6 h-6" />
@@ -189,8 +208,7 @@ export const ResetPasswordPage = () => {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                   New Password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={8}
                   value={password}
@@ -204,8 +222,7 @@ export const ResetPasswordPage = () => {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
                   Confirm Password
                 </label>
-                <input
-                  type="password"
+                <PasswordInput
                   required
                   minLength={8}
                   value={confirmPassword}

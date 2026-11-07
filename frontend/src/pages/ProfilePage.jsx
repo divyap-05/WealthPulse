@@ -4,6 +4,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { apiRequest } from '../services/api';
+import { PasswordInput } from '../components/ui/PasswordInput';
 
 export const ProfilePage = () => {
   const { user, updateProfile } = useAuth();
@@ -167,8 +168,7 @@ export const ProfilePage = () => {
               <form onSubmit={handleChangePassword} className="space-y-3.5 text-xs">
                 <div>
                   <label className="block uppercase font-bold text-slate-400 mb-1">Current Password</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     required
                     disabled={user?.isDemo}
                     value={currentPassword}
@@ -179,8 +179,7 @@ export const ProfilePage = () => {
 
                 <div>
                   <label className="block uppercase font-bold text-slate-400 mb-1">New Password (8+ chars)</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     required
                     minLength={8}
                     disabled={user?.isDemo}
@@ -192,8 +191,7 @@ export const ProfilePage = () => {
 
                 <div>
                   <label className="block uppercase font-bold text-slate-400 mb-1">Confirm New Password</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     required
                     minLength={8}
                     disabled={user?.isDemo}

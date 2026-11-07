@@ -48,9 +48,10 @@ export const getTransactions = async (req, res, next) => {
     }
 
     if (search && search.trim()) {
+      const literalSearch = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
-        { title: { $regex: search.trim(), $options: 'i' } },
-        { note: { $regex: search.trim(), $options: 'i' } },
+        { title: { $regex: literalSearch, $options: 'i' } },
+        { note: { $regex: literalSearch, $options: 'i' } },
       ];
     }
 

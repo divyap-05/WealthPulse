@@ -17,6 +17,7 @@ import {
   X,
   ArrowLeft,
   Sparkles,
+  LineChart,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -55,7 +56,7 @@ export const AppLayout = ({ children, title = 'Finance Overview' }) => {
       <aside className="hidden lg:flex flex-col w-64 border-r border-slate-200 dark:border-white/10 p-5 glass-surface z-30">
         <Link to="/" className="flex items-center gap-3 px-2 mb-6 group">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-primary to-brand-secondary flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-105 transition-transform">
-            <Sparkles className="w-5 h-5 text-white" />
+            <LineChart className="w-5 h-5 text-white" />
           </div>
           <div>
             <span className="font-extrabold text-lg tracking-tight text-slate-900 dark:text-white">
@@ -143,7 +144,7 @@ export const AppLayout = ({ children, title = 'Finance Overview' }) => {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-white" />
+                  <LineChart className="w-4 h-4 text-white" />
                 </div>
                 <span className="font-bold text-lg text-slate-900 dark:text-white">WealthPulse</span>
               </div>
@@ -250,7 +251,7 @@ export const AppLayout = ({ children, title = 'Finance Overview' }) => {
         </header>
 
         {/* Page Content Body */}
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto">{children}</main>
+        <main className="app-main flex-1 p-6 lg:p-8 overflow-y-auto">{children}</main>
       </div>
     </div>
   );

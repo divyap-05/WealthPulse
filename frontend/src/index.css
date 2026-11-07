@@ -3,9 +3,39 @@
 @tailwind utilities;
 
 @layer base {
+  html.dark {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
+}
+
+input[type='date'] {
+  color-scheme: light;
+}
+
+.dark input[type='date'] {
+  color-scheme: dark;
+}
+
+input[type='date']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  filter: brightness(0);
+}
+
+input[type='password']::-ms-reveal {
+  display: none;
+}
+
+.dark input[type='date']::-webkit-calendar-picker-indicator {
+  filter: brightness(0) invert(1);
 }
 
 /* Glassmorphism styling utilities */
@@ -31,6 +61,22 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Slightly improve readability in dense workspace labels and table details. */
+.app-main .text-xs {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.app-main [class~="text-[11px]"] {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.app-main [class~="text-[10px]"] {
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+
 .light .glass-card {
   background: #ffffff;
   backdrop-filter: none;
@@ -43,6 +89,34 @@
 .light {
   color: #0f172a;
   background-color: #f1f5f9;
+}
+
+.light .bg-dark-bg {
+  background-color: #f1f5f9 !important;
+}
+
+.light #features,
+.light #faq {
+  background-color: #e2e8f0 !important;
+}
+
+.light #how-it-works article,
+.light #faq details {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+.light .bg-brand-primary.text-white,
+.light .hover\:bg-purple-600:hover.text-white {
+  color: #ffffff !important;
+}
+
+.light .bg-gradient-to-tr .text-white {
+  color: #ffffff !important;
+}
+
+.light [class~="bg-[#191820]"] {
+  background-color: #ffffff !important;
 }
 
 .light main {
@@ -96,6 +170,14 @@
 
 .light .text-blue-400 {
   color: #1d4ed8 !important; /* Deep sapphire blue */
+}
+
+.light .text-pink-300 {
+  color: #9f1239 !important;
+}
+
+.light .text-emerald-300 {
+  color: #065f46 !important;
 }
 
 /* Backgrounds & borders in light mode */
@@ -164,6 +246,14 @@
 .light .bg-brand-rose\/20 {
   background-color: #ffe4e6 !important;
   color: #9f1239 !important;
+}
+
+.light .bg-pink-600\/30 {
+  background-color: #ffe4e6 !important;
+}
+
+.light .bg-emerald-600\/30 {
+  background-color: #d1fae5 !important;
 }
 
 /* Form fields & inputs in light mode */

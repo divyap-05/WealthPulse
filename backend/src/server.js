@@ -14,7 +14,7 @@ const startServer = async () => {
       console.log(` 🚀 Expense Tracker API running on port ${config.port}`);
       console.log(` 🌍 Environment: ${config.env}`);
       console.log(` 🔗 Frontend URL: ${config.frontendUrl}`);
-      console.log(` ✉️  Email Service: ${config.email.isConfigured ? 'Active' : 'Mock/Disabled (Safe dev mode)'}`);
+      console.log(` ✉️  Email Service: ${config.email.isConfigured ? 'Active' : 'Disabled'}`);
       console.log(`===============================================`);
     });
   } catch (error) {

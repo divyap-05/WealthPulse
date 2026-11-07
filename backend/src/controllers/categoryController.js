@@ -24,7 +24,7 @@ export const createCategory = async (req, res, next) => {
 
     const existing = await Category.findOne({
       user: req.user._id,
-      name: { $regex: new RegExp(`^${name}$`, 'i') },
+      name: { $regex: new RegExp(`^${name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
       type,
     });
 

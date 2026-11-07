@@ -29,10 +29,12 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { apiRequest } from '../services/api';
 import { formatINR, formatDate, toRupees } from '../utils/formatters';
 import { Link } from 'react-router-dom';
+import { useTheme } from '../context/ThemeContext';
 
 const CHART_COLORS = ['#8B5CF6', '#F09AB5', '#22C55E', '#60A5FA', '#FBBF24', '#A78BFA', '#EC4899'];
 
 export const DashboardPage = () => {
+  const { isDark } = useTheme();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -64,6 +66,8 @@ export const DashboardPage = () => {
     netCashFlow: 0,
     savingsRate: 0,
   };
+  const periodLabel = { week: 'this week', month: 'this month', year: 'this year' }[period] || `this ${period}`;
+  const incomeShortfall = Math.max(0, metrics.totalExpenses - metrics.totalIncome);
 
   return (
     <AppLayout title="Financial Dashboard">
@@ -168,10 +172,32 @@ export const DashboardPage = () => {
                   <PiggyBank className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl font-black tracking-tight text-white mb-1">
-                {metrics.savingsRate}%
+              <div className={`text-2xl font-black tracking-tight mb-1 ${
+                metrics.totalIncome > 0 && metrics.netCashFlow < 0
+                  ? 'text-red-500 dark:text-red-400'
+                  : 'text-white'
+              }`}>
+                {metrics.totalIncome > 0 ? `${Number(metrics.savingsRate || 0).toFixed(2)}%` : '—'}
               </div>
-              <p className="text-[11px] text-slate-400">Proportion of earnings retained</p>
+              {metrics.totalIncome <= 0 ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">No income recorded {periodLabel}</p>
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                    {metrics.totalExpenses > 0
+                      ? `${formatINR(metrics.totalExpenses)} in expenses recorded. Add income to calculate your savings rate.`
+                      : 'Add income to calculate your savings rate.'}
+                  </p>
+                </div>
+              ) : metrics.netCashFlow < 0 ? (
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-red-600 dark:text-red-400">Spending exceeds income</p>
+                  <p className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
+                    You spent {formatINR(incomeShortfall)} more than your recorded income {periodLabel}.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[11px] text-slate-600 dark:text-slate-400">Net savings ÷ income for {periodLabel}</p>
+              )}
             </div>
           </div>
 
@@ -256,13 +282,21 @@ export const DashboardPage = () => {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Spent']}
-                          contentStyle={{
-                            background: '#191820',
-                            borderColor: 'rgba(255,255,255,0.1)',
-                            borderRadius: '8px',
-                            color: '#fff',
-                            fontSize: '12px',
+                          content={({ active, payload }) => {
+                            if (!active || !payload?.length) return null;
+                            const entry = payload[0].payload;
+                            return (
+                              <div className={`rounded-lg border px-3 py-2 text-xs shadow-lg ${
+                                isDark
+                                  ? 'border-white/10 bg-[#191820] text-white'
+                                  : 'border-slate-300 bg-white text-slate-900'
+                              }`}>
+                                <p className="font-semibold">{entry.name}</p>
+                                <p className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                                  Spent: ₹{Number(entry.value).toLocaleString('en-IN')}
+                                </p>
+                              </div>
+                            );
                           }}
                         />
                       </PieChart>
@@ -386,12 +420,12 @@ export const DashboardPage = () => {
                         <span className="font-semibold text-slate-300">
                           {b.category ? b.category.name : 'Overall Limit'}
                         </span>
-                        <span className="text-slate-400">Target: {formatINR(b.amount)}</span>
+                        <span className="text-slate-400">{formatINR(b.spent)} / {formatINR(b.amount)}</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-brand-primary"
-                          style={{ width: `${Math.min(100, b.alertThreshold || 75)}%` }}
+                          className={`h-full rounded-full ${b.isExceeded ? 'bg-red-500' : 'bg-brand-primary'}`}
+                          style={{ width: `${Math.min(100, Math.max(0, b.percentageUsed || 0))}%` }}
                         />
                       </div>
                     </div>
@@ -417,12 +451,12 @@ export const DashboardPage = () => {
                     <div key={g._id} className="space-y-1.5">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-semibold text-slate-300">{g.name}</span>
-                        <span className="text-emerald-400 font-bold">{g.percentage}%</span>
+                        <span className="text-emerald-400 font-bold">{Number(g.percentage || 0).toFixed(2)}%</span>
                       </div>
                       <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                         <div
                           className="h-full rounded-full bg-emerald-500"
-                          style={{ width: `${g.percentage}%` }}
+                          style={{ width: `${Math.min(100, Math.max(0, Number(g.percentage) || 0))}%` }}
                         />
                       </div>
                     </div>

@@ -7,7 +7,7 @@ import { processRecurringTransactions } from '../services/recurringService.js';
 export const getRecurringTransactions = async (req, res, next) => {
   try {
     // Proactively generate any pending due recurring items for this user
-    await processRecurringTransactions(req.user._id);
+    if (!req.user.isDemo) await processRecurringTransactions(req.user._id);
 
     const recurring = await RecurringTransaction.find({ user: req.user._id })
       .populate('category', 'name icon color type')
@@ -119,8 +119,22 @@ export const updateRecurringTransaction = async (req, res, next) => {
     if (title) item.title = title;
     if (amount !== undefined) item.amount = toPaise(amount);
     if (type) item.type = type;
-    if (category) item.category = category;
-    if (paymentMethod !== undefined) item.paymentMethod = paymentMethod || null;
+    if (category) {
+      const cat = await Category.findOne({ _id: category, user: req.user._id });
+      if (!cat) {
+        return res.status(400).json({ success: false, message: 'Invalid category for this user.' });
+      }
+      item.category = category;
+    }
+    if (paymentMethod !== undefined) {
+      if (paymentMethod) {
+        const pm = await PaymentMethod.findOne({ _id: paymentMethod, user: req.user._id });
+        if (!pm) {
+          return res.status(400).json({ success: false, message: 'Invalid payment method for this user.' });
+        }
+      }
+      item.paymentMethod = paymentMethod || null;
+    }
     if (frequency) item.frequency = frequency;
     if (startDate) item.startDate = new Date(startDate);
     if (endDate !== undefined) item.endDate = endDate ? new Date(endDate) : null;

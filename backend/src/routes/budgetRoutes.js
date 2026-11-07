@@ -5,14 +5,15 @@ import {
   updateBudget,
   deleteBudget,
 } from '../controllers/budgetController.js';
-import { protect } from '../middleware/auth.js';
+import { protect, blockDemoWrites } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { createBudgetSchema, updateBudgetSchema } from '../validators/budgetValidator.js';
+import { createBudgetSchema, updateBudgetSchema, getBudgetsQuerySchema } from '../validators/budgetValidator.js';
 
 const router = Router();
 router.use(protect);
+router.use(blockDemoWrites);
 
-router.get('/', getBudgets);
+router.get('/', validate(getBudgetsQuerySchema), getBudgets);
 router.post('/', validate(createBudgetSchema), createBudget);
 router.put('/:id', validate(updateBudgetSchema), updateBudget);
 router.delete('/:id', deleteBudget);

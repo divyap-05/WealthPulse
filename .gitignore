@@ -14,11 +14,7 @@ dist-ssr/
 *.local
 
 # Environment files
-.env
-.env.local
-.env.production
-.env.staging
-.env.example
+.env*
 
 # Editor / OS
 .DS_Store
@@ -27,5 +23,7 @@ Thumbs.db
 .idea/
 
 #Temporary files
-DEPLOYMENT.md 
 GEMINI.md
+DEPLOYMENT.md
+AGENTS.md
+

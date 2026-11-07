@@ -6,7 +6,7 @@ import {
   contributeSavingsGoal,
   deleteSavingsGoal,
 } from '../controllers/savingsGoalController.js';
-import { protect } from '../middleware/auth.js';
+import { protect, blockDemoWrites } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
   createSavingsGoalSchema,
@@ -16,6 +16,7 @@ import {
 
 const router = Router();
 router.use(protect);
+router.use(blockDemoWrites);
 
 router.get('/', getSavingsGoals);
 router.post('/', validate(createSavingsGoalSchema), createSavingsGoal);

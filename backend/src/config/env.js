@@ -6,6 +6,26 @@ const requiredEnv = ['JWT_SECRET'];
 // Validate environment variables at backend startup
 export const validateConfig = () => {
   const missing = requiredEnv.filter((name) => !process.env[name]);
+  if (process.env.NODE_ENV === 'production') {
+    for (const name of ['JWT_SECRET', 'COOKIE_SECRET']) {
+      if (!process.env[name] || process.env[name].length < 32) {
+        missing.push(`${name} (must be at least 32 characters in production)`);
+      }
+    }
+    if (!process.env.MONGODB_URI) missing.push('MONGODB_URI');
+    if (!process.env.FRONTEND_URL) {
+      missing.push('FRONTEND_URL');
+    } else {
+      try {
+        const frontendUrl = new URL(process.env.FRONTEND_URL);
+        if (frontendUrl.protocol !== 'https:' || frontendUrl.origin !== process.env.FRONTEND_URL) {
+          missing.push('FRONTEND_URL (must be an HTTPS origin without a path)');
+        }
+      } catch {
+        missing.push('FRONTEND_URL (must be a valid HTTPS origin)');
+      }
+    }
+  }
   if (missing.length > 0) {
     throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
   }

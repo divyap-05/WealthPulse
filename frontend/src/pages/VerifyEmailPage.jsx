@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, ArrowRight, Loader2 } from 'lucide-react';
 import { apiRequest } from '../services/api';
+import { ThemeToggle } from '../components/ui/ThemeToggle';
 
 export const VerifyEmailPage = () => {
   const [searchParams] = useSearchParams();
@@ -32,6 +33,7 @@ export const VerifyEmailPage = () => {
 
   return (
     <div className="min-h-screen bg-dark-bg flex items-center justify-center p-6 selection:bg-brand-primary">
+      <ThemeToggle className="fixed right-5 top-5 z-50" />
       <div className="w-full max-w-md glass-surface p-8 rounded-2xl border border-white/10 text-center">
         {status === 'loading' && (
           <div className="py-8">

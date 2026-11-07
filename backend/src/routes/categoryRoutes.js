@@ -10,7 +10,7 @@ import {
   createPaymentMethod,
   deletePaymentMethod,
 } from '../controllers/paymentMethodController.js';
-import { protect } from '../middleware/auth.js';
+import { protect, blockDemoWrites } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
   createCategorySchema,
@@ -20,6 +20,7 @@ import {
 
 const router = Router();
 router.use(protect);
+router.use(blockDemoWrites);
 
 // Categories
 router.get('/categories', getCategories);

@@ -6,7 +6,7 @@ import {
   updateTransaction,
   deleteTransaction,
 } from '../controllers/transactionController.js';
-import { protect } from '../middleware/auth.js';
+import { protect, blockDemoWrites } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import {
   createTransactionSchema,
@@ -17,6 +17,7 @@ import {
 const router = Router();
 
 router.use(protect); // All transaction endpoints require authenticated user
+router.use(blockDemoWrites);
 
 router.get('/', validate(getTransactionsQuerySchema), getTransactions);
 router.get('/:id', getTransactionById);

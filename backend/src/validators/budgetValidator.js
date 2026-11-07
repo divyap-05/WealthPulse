@@ -19,3 +19,10 @@ export const updateBudgetSchema = z.object({
     alertThreshold: z.number().min(1).max(100).optional(),
   }),
 });
+
+export const getBudgetsQuerySchema = z.object({
+  query: z.object({
+    month: z.string().regex(/^(?:[1-9]|1[0-2])$/).optional(),
+    year: z.string().regex(/^(?:202\d|20[3-9]\d|2100)$/).optional(),
+  }),
+});

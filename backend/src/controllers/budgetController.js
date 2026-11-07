@@ -1,5 +1,6 @@
 import Budget from '../models/Budget.js';
 import Transaction from '../models/Transaction.js';
+import Category from '../models/Category.js';
 import { toPaise } from '../utils/currency.js';
 
 export const getBudgets = async (req, res, next) => {
@@ -65,6 +66,13 @@ export const getBudgets = async (req, res, next) => {
 export const createBudget = async (req, res, next) => {
   try {
     const { category, amount, month, year, alertThreshold } = req.body;
+
+    if (category) {
+      const ownedCategory = await Category.findOne({ _id: category, user: req.user._id }).select('_id');
+      if (!ownedCategory) {
+        return res.status(400).json({ success: false, message: 'Invalid category for this user.' });
+      }
+    }
 
     const existing = await Budget.findOne({
       user: req.user._id,

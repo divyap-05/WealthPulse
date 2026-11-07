@@ -6,7 +6,9 @@ export const getSavingsGoals = async (req, res, next) => {
     const goals = await SavingsGoal.find({ user: req.user._id }).sort({ createdAt: -1 });
 
     const processed = goals.map((g) => {
-      const percentage = g.targetAmount > 0 ? Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 100)) : 0;
+      const percentage = Number.isFinite(g.targetAmount) && g.targetAmount > 0 && Number.isFinite(g.currentAmount)
+        ? Math.min(100, Math.round((g.currentAmount / g.targetAmount) * 10000) / 100)
+        : 0;
       const remaining = Math.max(0, g.targetAmount - g.currentAmount);
       return {
         ...g.toObject(),

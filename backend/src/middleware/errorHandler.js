@@ -1,5 +1,9 @@
 export const errorHandler = (err, req, res, next) => {
-  console.error('[App Error]', err);
+  if (process.env.NODE_ENV === 'production') {
+    console.error('[App Error]', err.name || 'Error');
+  } else {
+    console.error('[App Error]', err);
+  }
 
   // Mongoose duplicate key error (code 11000)
   if (err.code === 11000) {
@@ -24,12 +28,19 @@ export const errorHandler = (err, req, res, next) => {
   if (err.name === 'CastError') {
     return res.status(400).json({
       success: false,
-      message: `Invalid format for resource ID: ${err.value}`,
+      message: 'Invalid resource ID format.',
     });
   }
 
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ success: false, message: 'Request body is too large.' });
+  }
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ success: false, message: 'Invalid JSON request body.' });
+  }
+
   const statusCode = err.statusCode || 500;
-  const message = err.isOperational ? err.message : (statusCode === 500 ? 'Internal server error' : err.message);
+  const message = err.isOperational ? err.message : 'Internal server error';
 
   res.status(statusCode).json({
     success: false,

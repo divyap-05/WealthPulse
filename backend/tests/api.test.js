@@ -104,9 +104,47 @@ describe('Expense Tracker Backend Core Test Suite', () => {
       assert.strictEqual(res.body.user.email, 'alice@example.com');
     });
 
+    test('Changing a password invalidates old sessions and keeps the current session signed in', async () => {
+      const previousCookie = user1Cookie;
+      const res = await request(app)
+        .post('/api/auth/change-password')
+        .set('Cookie', user1Cookie)
+        .send({ currentPassword: 'Password123!', newPassword: 'Password456!' });
+
+      assert.strictEqual(res.status, 200);
+      assert.ok(res.headers['set-cookie']);
+      user1Cookie = res.headers['set-cookie'][0];
+
+      const oldSession = await request(app).get('/api/auth/me').set('Cookie', previousCookie);
+      assert.strictEqual(oldSession.status, 401);
+
+      const currentSession = await request(app).get('/api/auth/me').set('Cookie', user1Cookie);
+      assert.strictEqual(currentSession.status, 200);
+    });
+
     test('Should reject unauthenticated access to protected routes', async () => {
       const res = await request(app).get('/api/transactions');
       assert.strictEqual(res.status, 401);
+    });
+
+    test('Password recovery is disabled without email delivery and creates no reset token', async () => {
+      const existingAccount = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: 'alice@example.com' });
+      const unknownAccount = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: 'unknown@example.com' });
+
+      assert.strictEqual(existingAccount.status, 503);
+      assert.strictEqual(unknownAccount.status, 503);
+      assert.deepStrictEqual(existingAccount.body, unknownAccount.body);
+      const user = await User.findOne({ email: 'alice@example.com' }).select('+resetPasswordToken');
+      assert.strictEqual(user.resetPasswordToken, undefined);
+
+      const resetAttempt = await request(app)
+        .post('/api/auth/reset-password')
+        .send({ token: 'guessed-token', password: 'AttackerPassword!' });
+      assert.strictEqual(resetAttempt.status, 503);
     });
   });
 
@@ -197,6 +235,36 @@ describe('Expense Tracker Backend Core Test Suite', () => {
 
       assert.strictEqual(res.status, 400);
       assert.strictEqual(res.body.message, 'Invalid category for this user.');
+
+      const budgetRes = await request(app)
+        .post('/api/budgets')
+        .set('Cookie', user1Cookie)
+        .send({
+          category: user2Category.toString(),
+          amount: 500,
+          month: new Date().getMonth() + 1,
+          year: new Date().getFullYear(),
+        });
+      assert.strictEqual(budgetRes.status, 400);
+
+      const recurringRes = await request(app)
+        .post('/api/recurring')
+        .set('Cookie', user1Cookie)
+        .send({
+          title: 'Owned recurring rule',
+          amount: 500,
+          type: 'expense',
+          category: user1Category.toString(),
+          frequency: 'monthly',
+          startDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        });
+      assert.strictEqual(recurringRes.status, 201);
+
+      const recurringUpdate = await request(app)
+        .put(`/api/recurring/${recurringRes.body.data._id}`)
+        .set('Cookie', user1Cookie)
+        .send({ category: user2Category.toString() });
+      assert.strictEqual(recurringUpdate.status, 400);
     });
   });
 
@@ -209,6 +277,19 @@ describe('Expense Tracker Backend Core Test Suite', () => {
       assert.ok(res.headers['set-cookie']);
 
       const demoCookie = res.headers['set-cookie'][0];
+      const initialDemoTransactions = await Transaction.countDocuments({ user: res.body.user.id });
+
+      const mutationRes = await request(app)
+        .post('/api/transactions')
+        .set('Cookie', demoCookie)
+        .send({ title: 'Demo change', amount: 1, type: 'expense', category: user1Category.toString() });
+      assert.strictEqual(mutationRes.status, 403);
+
+      await request(app).post('/api/demo/enter');
+      assert.strictEqual(
+        await Transaction.countDocuments({ user: res.body.user.id }),
+        initialDemoTransactions
+      );
 
       // Test dashboard endpoint for demo user returns calculated figures
       const dashRes = await request(app)
@@ -219,6 +300,100 @@ describe('Expense Tracker Backend Core Test Suite', () => {
       assert.ok(dashRes.body.data.metrics.totalIncome > 0);
       assert.ok(dashRes.body.data.metrics.totalExpenses > 0);
       assert.ok(dashRes.body.data.insights.length > 0);
+    });
+  });
+
+  describe('4. Budget and savings progress precision', () => {
+    test('Dashboard budget progress reflects spending below, at, and above the limit', async () => {
+      const now = new Date();
+      const budgetRes = await request(app)
+        .post('/api/budgets')
+        .set('Cookie', user1Cookie)
+        .send({
+          category: user1Category.toString(),
+          amount: 2000,
+          month: now.getMonth() + 1,
+          year: now.getFullYear(),
+        });
+
+      assert.strictEqual(budgetRes.status, 201);
+      const budgetId = budgetRes.body.data._id;
+
+      const getDashboardBudget = async () => {
+        const response = await request(app)
+          .get('/api/analytics/dashboard')
+          .set('Cookie', user1Cookie);
+        assert.strictEqual(response.status, 200);
+        return response.body.data.activeBudgets.find((budget) => budget._id === budgetId);
+      };
+
+      let budget = await getDashboardBudget();
+      assert.strictEqual(budget.spent, 145075);
+      assert.strictEqual(budget.percentageUsed, 73);
+      assert.strictEqual(budget.isExceeded, false);
+
+      await request(app).put(`/api/budgets/${budgetId}`).set('Cookie', user1Cookie).send({ amount: 1450.75 });
+      budget = await getDashboardBudget();
+      assert.strictEqual(budget.percentageUsed, 100);
+      assert.strictEqual(budget.isExceeded, false);
+
+      await request(app).put(`/api/budgets/${budgetId}`).set('Cookie', user1Cookie).send({ amount: 1000 });
+      budget = await getDashboardBudget();
+      assert.strictEqual(budget.percentageUsed, 145);
+      assert.strictEqual(budget.spent, 145075);
+      assert.strictEqual(budget.amount, 100000);
+      assert.strictEqual(budget.remaining, -45075);
+      assert.strictEqual(budget.isExceeded, true);
+      assert.strictEqual(Math.min(100, budget.percentageUsed), 100);
+    });
+
+    test('Savings goals retain two decimal places of percentage precision', async () => {
+      const createRes = await request(app)
+        .post('/api/goals')
+        .set('Cookie', user1Cookie)
+        .send({ name: 'Precision test', targetAmount: 1000000, currentAmount: 100 });
+
+      assert.strictEqual(createRes.status, 201);
+      const goalId = createRes.body.data._id;
+      const expected = [
+        [100, 0.01],
+        [900, 0.09],
+        [5000, 0.5],
+        [50000, 5],
+        [1000000, 100],
+      ];
+
+      for (const [currentAmount, percentage] of expected) {
+        await request(app)
+          .put(`/api/goals/${goalId}`)
+          .set('Cookie', user1Cookie)
+          .send({ currentAmount });
+        const response = await request(app).get('/api/goals').set('Cookie', user1Cookie);
+        assert.strictEqual(response.status, 200);
+        const goal = response.body.data.find((item) => item._id === goalId);
+        assert.strictEqual(goal.percentage, percentage);
+      }
+    });
+
+    test('Dashboard savings rate reflects negative net savings and rounds to two decimals', async () => {
+      const incomeCategory = await Category.findOne({ user: user1Id, type: 'income' });
+      const incomeRes = await request(app)
+        .post('/api/transactions')
+        .set('Cookie', user1Cookie)
+        .send({
+          title: 'Monthly income',
+          amount: 1000,
+          type: 'income',
+          category: incomeCategory._id.toString(),
+        });
+
+      assert.strictEqual(incomeRes.status, 201);
+      const dashboardRes = await request(app)
+        .get('/api/analytics/dashboard')
+        .set('Cookie', user1Cookie);
+
+      assert.strictEqual(dashboardRes.status, 200);
+      assert.strictEqual(dashboardRes.body.data.metrics.savingsRate, -45.08);
     });
   });
 });

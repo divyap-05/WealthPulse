@@ -3,6 +3,14 @@ import { config } from '../config/env.js';
 
 let transporter = null;
 
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[character]));
+
 if (config.email.isConfigured) {
   transporter = nodemailer.createTransport({
     host: config.email.host,
@@ -19,11 +27,7 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
   const verifyUrl = `${config.frontendUrl}/verify-email?token=${token}`;
 
   if (!config.email.isConfigured) {
-    console.log(`\n-----------------------------------------`);
-    console.log(`[Email Mock (Dev)] Verification link for ${name} (${to}):`);
-    console.log(`${verifyUrl}`);
-    console.log(`-----------------------------------------\n`);
-    return { sent: false, mockUrl: config.env === 'development' ? verifyUrl : null };
+    return { sent: false };
   }
 
   const mailOptions = {
@@ -32,7 +36,7 @@ export const sendVerificationEmail = async ({ to, token, name }) => {
     subject: 'Verify your Expense Tracker Account',
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #191820; color: #ffffff; border-radius: 8px;">
-        <h2 style="color: #A78BFA;">Welcome, ${name}!</h2>
+        <h2 style="color: #A78BFA;">Welcome, ${escapeHtml(name)}!</h2>
         <p>Thank you for registering. Please confirm your email address by clicking the link below:</p>
         <p style="margin: 24px 0;">
           <a href="${verifyUrl}" style="background: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Verify Account</a>
@@ -50,11 +54,7 @@ export const sendPasswordResetEmail = async ({ to, token, name }) => {
   const resetUrl = `${config.frontendUrl}/reset-password?token=${token}`;
 
   if (!config.email.isConfigured) {
-    console.log(`\n-----------------------------------------`);
-    console.log(`[Email Mock (Dev)] Password Reset link for ${name} (${to}):`);
-    console.log(`${resetUrl}`);
-    console.log(`-----------------------------------------\n`);
-    return { sent: false, mockUrl: config.env === 'development' ? resetUrl : null };
+    return { sent: false };
   }
 
   const mailOptions = {
@@ -64,7 +64,7 @@ export const sendPasswordResetEmail = async ({ to, token, name }) => {
     html: `
       <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; background: #191820; color: #ffffff; border-radius: 8px;">
         <h2 style="color: #A78BFA;">Password Reset Request</h2>
-        <p>Hello ${name}, you requested to reset your password. Click the link below to set a new password:</p>
+        <p>Hello ${escapeHtml(name)}, you requested to reset your password. Click the link below to set a new password:</p>
         <p style="margin: 24px 0;">
           <a href="${resetUrl}" style="background: #8B5CF6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset Password</a>
         </p>
