@@ -166,6 +166,6 @@ Email verification and password recovery require configured SMTP delivery. Witho
 - Add optional bank transaction imports.
 - Add more export formats and customizable report periods.
 
-## Contributing
-
-Open an issue to discuss substantial changes, then submit a focused pull request with a clear description and relevant checks. This repository does not currently include a license file.
+## Author
+### DIVYA RAVINDRA PAI
+Engineering student
