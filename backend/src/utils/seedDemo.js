@@ -11,7 +11,9 @@ import { generateToken, setAuthCookie } from '../utils/token.js';
 
 export const DEMO_USER_EMAIL = 'demo@expensetracker.local';
 
-export const seedDemoUserAndData = async () => {
+let demoSeedInFlight = null;
+
+const initializeDemoUserAndData = async () => {
   let demoUser = await User.findOne({ email: DEMO_USER_EMAIL });
 
   if (demoUser) {
@@ -28,7 +30,16 @@ export const seedDemoUserAndData = async () => {
         theme: 'dark',
       },
     });
-    await demoUser.save();
+    try {
+      await demoUser.save();
+    } catch (error) {
+      // Separate Vercel instances can receive the first demo request at once.
+      // If another instance created the unique demo user first, reuse it.
+      if (error.code !== 11000) throw error;
+      demoUser = await User.findOne({ email: DEMO_USER_EMAIL });
+      if (!demoUser) throw error;
+      return demoUser;
+    }
   }
 
   // Seed standard categories & payment methods
@@ -246,6 +257,18 @@ export const seedDemoUserAndData = async () => {
   });
 
   return demoUser;
+};
+
+export const seedDemoUserAndData = async () => {
+  // Coalesce concurrent requests handled by the same warm serverless instance
+  // so only one of them inserts the initial demo data.
+  if (!demoSeedInFlight) {
+    demoSeedInFlight = initializeDemoUserAndData().finally(() => {
+      demoSeedInFlight = null;
+    });
+  }
+
+  return demoSeedInFlight;
 };
 
 // Express endpoint for 1-click Demo Login
