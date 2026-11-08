@@ -35,8 +35,6 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 
 ## Screenshots
 
-Add your screenshots to a root-level `screenshots/` folder using these filenames. Each placeholder below is ready to display its image when you add the matching file.
-
 ### Landing page
 
 ![WealthPulse landing page](screenshots/landing-page.png)
@@ -208,7 +206,7 @@ Open `http://localhost:5173`. Vite forwards `/api` requests to the backend.
 - **Frontend:** Deployed on Vercel
 - **Backend:** Deployed on Vercel (Serverless Functions)
 - **Database:** MongoDB Atlas
-- **Live Website:** https://wealth-pulse-vvm3.vercel.app/
+- **Live Website:** https://wealth-pulse-money-manager.vercel.app/
 
 The application is deployed as a full-stack web application with cloud-hosted frontend, backend APIs, and database infrastructure.
 
