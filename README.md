@@ -2,7 +2,7 @@
 
 WealthPulse is a personal finance tracker for recording income and expenses, setting budgets and savings goals, and reviewing monthly cash flow. It includes a dashboard, reports, recurring transaction rules, and downloadable monthly transaction reports.
 
-**Live application:** [wealth-pulse-vvm3.vercel.app](https://wealth-pulse-vvm3.vercel.app/)
+**Live application:** [wealth-pulse-money-manager.vercel.app](https://wealth-pulse-money-manager.vercel.app/)
 
 **Backend API health:** [wealth-pulse-lake.vercel.app/api/health](https://wealth-pulse-lake.vercel.app/api/health)
 
