@@ -19,6 +19,20 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 - Interactive demo account and **dark** and **light** themes.
 - Optional email verification and password recovery when SMTP delivery is configured. Without SMTP, recovery is unavailable; signed-in users can change their password in Profile settings.
 
+## Technology stack
+
+| Area | Technologies |
+| --- | --- |
+| Frontend |**React 18, Vite, React Router, Tailwind CSS, Recharts, Lucide React**|
+| Backend | **Node.js, Express 4, Mongoose** |
+| Database | **MongoDB Atlas** |
+| Validation | **Zod** |
+| Authentication | **bcryptjs password hashing, JSON Web Tokens, HTTP-only cookies** |
+| Email | **Nodemailer with SMTP configuration** |
+| Security | **Helmet, CORS, express-rate-limit** |
+| Backend checks | **Node.js test runner, Supertest, mongodb-memory-server** |
+
+
 ## Screenshots
 
 Add your screenshots to a root-level `screenshots/` folder using these filenames. Each placeholder below is ready to display its image when you add the matching file.
@@ -61,19 +75,6 @@ Add your screenshots to a root-level `screenshots/` folder using these filenames
 ![WealthPulse light theme](screenshots/light-theme.png)
 ![WealthPulse dark theme](screenshots/dark-theme.png)
 
-
-## Technology stack
-
-| Area | Technologies |
-| --- | --- |
-| Frontend |**React 18, Vite, React Router, Tailwind CSS, Recharts, Lucide React**|
-| Backend | **Node.js, Express 4, Mongoose** |
-| Database | **MongoDB Atlas** |
-| Validation | **Zod** |
-| Authentication | **bcryptjs password hashing, JSON Web Tokens, HTTP-only cookies** |
-| Email | **Nodemailer with SMTP configuration** |
-| Security | **Helmet, CORS, express-rate-limit** |
-| Backend checks | **Node.js test runner, Supertest, mongodb-memory-server** |
 
 ## Project structure
 
