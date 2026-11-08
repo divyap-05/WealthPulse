@@ -31,7 +31,7 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 | Email | **Nodemailer with SMTP configuration** |
 | Security | **Helmet, CORS, express-rate-limit** |
 | Backend checks | **Node.js test runner, Supertest, mongodb-memory-server** |
- Version Control | **Git,GitHub** |
+ Version Control | **Git, GitHub** |
 
 
 ## Screenshots
