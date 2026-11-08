@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { apiRequest } from '../services/api';
 
 const AuthContext = createContext();
@@ -7,7 +7,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     try {
       const res = await apiRequest('/auth/me');
       if (res.success && res.user) {
@@ -20,13 +20,13 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const res = await apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
@@ -35,9 +35,9 @@ export const AuthProvider = ({ children }) => {
       setUser(res.user);
     }
     return res;
-  };
+  }, []);
 
-  const register = async (name, email, password) => {
+  const register = useCallback(async (name, email, password) => {
     const res = await apiRequest('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ name, email, password }),
@@ -46,9 +46,9 @@ export const AuthProvider = ({ children }) => {
       setUser(res.user);
     }
     return res;
-  };
+  }, []);
 
-  const enterDemo = async () => {
+  const enterDemo = useCallback(async () => {
     const res = await apiRequest('/demo/enter', {
       method: 'POST',
     });
@@ -56,17 +56,17 @@ export const AuthProvider = ({ children }) => {
       setUser(res.user);
     }
     return res;
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await apiRequest('/auth/logout', { method: 'POST' });
     } finally {
       setUser(null);
     }
-  };
+  }, []);
 
-  const updateProfile = async (data) => {
+  const updateProfile = useCallback(async (data) => {
     const res = await apiRequest('/auth/profile', {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -75,21 +75,21 @@ export const AuthProvider = ({ children }) => {
       setUser(res.user);
     }
     return res;
-  };
+  }, []);
+
+  const value = useMemo(() => ({
+    user,
+    loading,
+    login,
+    register,
+    enterDemo,
+    logout,
+    updateProfile,
+    isAuthenticated: Boolean(user),
+  }), [user, loading, login, register, enterDemo, logout, updateProfile]);
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        register,
-        enterDemo,
-        logout,
-        updateProfile,
-        isAuthenticated: Boolean(user),
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

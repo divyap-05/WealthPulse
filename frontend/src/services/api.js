@@ -3,16 +3,14 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 export const apiRequest = async (endpoint, options = {}) => {
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
-  const defaultHeaders = {
-    'Content-Type': 'application/json',
-  };
+  const headers = new Headers(options.headers || {});
+  if (options.body != null && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   const response = await fetch(url, {
     ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
+    headers,
     credentials: 'include', // Transport HTTP-only cookies
   });
 

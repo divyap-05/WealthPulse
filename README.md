@@ -2,6 +2,10 @@
 
 WealthPulse is a personal finance tracker for recording income and expenses, setting budgets and savings goals, and reviewing monthly cash flow. It includes a dashboard, reports, recurring transaction rules, and downloadable monthly transaction reports.
 
+**Live application:** [wealth-pulse-vvm3.vercel.app](https://wealth-pulse-vvm3.vercel.app/)
+
+**Backend API health:** [wealth-pulse-lake.vercel.app/api/health](https://wealth-pulse-lake.vercel.app/api/health)
+
 ## Features
 
 - Account registration, sign in, profile preferences, and password changes.
@@ -10,29 +14,73 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 - Monthly budget tracking with spending progress and over-budget amounts.
 - Savings goals with contributions and withdrawals.
 - Recurring transaction rules for regular income and expenses.
-- Dashboard summaries, charts, reports, and rule-based financial insights. Insights are calculated from account data; no AI service is used.
-- Monthly transaction exports in CSV and PDF. The PDF preview includes total income, total expenses, and net cash flow.
-- Interactive demo account and dark and light themes.
+- Dashboard **summaries**, **charts**, **reports**, and **rule-based financial insights**. Insights are calculated from account data; no AI service is used.
+- Monthly transaction exports in **CSV** and **PDF**. The PDF preview includes total income, total expenses, and net cash flow.
+- Interactive demo account and **dark** and **light** themes.
 - Optional email verification and password recovery when SMTP delivery is configured. Without SMTP, recovery is unavailable; signed-in users can change their password in Profile settings.
+
+## Screenshots
+
+Add your screenshots to a root-level `screenshots/` folder using these filenames. Each placeholder below is ready to display its image when you add the matching file.
+
+### Landing page
+
+![WealthPulse landing page](screenshots/landing-page.png)
+
+### Login and registration
+
+![WealthPulse login and registration](screenshots/login-registration.png)
+
+### Dashboard
+
+![WealthPulse dashboard1](screenshots/dashboard1.png)
+![WealthPulse dashboard2](screenshots/dashboard2.png)
+
+### Transactions and downloads
+
+![WealthPulse transactions with CSV and PDF downloads](screenshots/transactions-downloads.png)
+
+### Budgets
+
+![WealthPulse budget tracking](screenshots/budgets.png)
+
+### Savings goals
+
+![WealthPulse savings goals](screenshots/savings-goals.png)
+
+### Recurring 
+
+![WealthPulse Recurring](screenshots/recurring.png)
+
+### Reports and analytics
+
+![WealthPulse reports and analytics](screenshots/reports-analytics.png)
+
+### Light and dark themes
+
+![WealthPulse light theme](screenshots/light-theme.png)
+![WealthPulse dark theme](screenshots/dark-theme.png)
+
 
 ## Technology stack
 
 | Area | Technologies |
 | --- | --- |
-| Frontend | React 18, Vite, React Router, Tailwind CSS, Recharts, Lucide React |
-| Backend | Node.js, Express 4, Mongoose |
-| Database | MongoDB |
-| Validation | Zod |
-| Authentication | bcryptjs password hashing, JSON Web Tokens, HTTP-only cookies |
-| Email | Nodemailer with SMTP configuration |
-| Security | Helmet, CORS, express-rate-limit |
-| Backend checks | Node.js test runner, Supertest, mongodb-memory-server |
+| Frontend |**React 18, Vite, React Router, Tailwind CSS, Recharts, Lucide React**|
+| Backend | **Node.js, Express 4, Mongoose** |
+| Database | **MongoDB Atlas** |
+| Validation | **Zod** |
+| Authentication | **bcryptjs password hashing, JSON Web Tokens, HTTP-only cookies** |
+| Email | **Nodemailer with SMTP configuration** |
+| Security | **Helmet, CORS, express-rate-limit** |
+| Backend checks | **Node.js test runner, Supertest, mongodb-memory-server** |
 
 ## Project structure
 
 ```text
 .
 ├── backend/
+│   ├── index.js          # Vercel serverless Express entry point
 │   ├── src/
 │   │   ├── config/       # Environment and database setup
 │   │   ├── controllers/  # API handlers
@@ -154,6 +202,15 @@ npm run dev
 
 Open `http://localhost:5173`. Vite forwards `/api` requests to the backend.
 
+## Deployment
+
+- **Frontend:** Deployed on Vercel
+- **Backend:** Deployed on Vercel (Serverless Functions)
+- **Database:** MongoDB Atlas
+- **Live Website:** https://wealth-pulse-vvm3.vercel.app/
+
+The application is deployed as a full-stack web application with cloud-hosted frontend, backend APIs, and database infrastructure.
+
 ## Security overview
 
 Passwords are hashed with bcryptjs. Authentication uses seven-day JWTs in HTTP-only cookies. Password changes invalidate previous sessions, protected data is scoped to the authenticated account, request bodies are validated, and sensitive authentication endpoints are rate-limited. Helmet provides security headers. Keep private backend credentials out of frontend configuration and source control.
@@ -162,9 +219,10 @@ Email verification and password recovery require configured SMTP delivery. Witho
 
 ## Future improvements
 
-- Configure a production email provider for account verification and email-based password recovery.
+- Configure a production **email provider** for **account verification** and **email-based password recovery**.
 - Add optional bank transaction imports.
 - Add more export formats and customizable report periods.
+- **AI Integration:** Personalized AI finance chatbot, AI-powered receipt and bill scanning, automated transaction generation, and intelligent financial insights.
 
 ## Author
 ### DIVYA RAVINDRA PAI

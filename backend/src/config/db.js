@@ -9,6 +9,8 @@ export const connectDB = async (customUri = null) => {
     // Attempt standard connection with a 4 second timeout so it doesn't hang indefinitely
     const conn = await mongoose.connect(uri, {
       serverSelectionTimeoutMS: 4000,
+      maxPoolSize: 5,
+      minPoolSize: 0,
     });
     console.log('[Database] MongoDB connected.');
     return conn;

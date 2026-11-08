@@ -9,69 +9,89 @@ export const generateSmartInsights = async (userId) => {
   const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
-
   // 1. Current month vs prev month spending
-  const [currExpenses, prevExpenses, currIncome] = await Promise.all([
+  const [activity, activeBudgets, dueSoon] = await Promise.all([
     Transaction.aggregate([
       {
         $match: {
           user: userId,
-          type: 'expense',
-          date: { $gte: currentMonthStart, $lte: currentMonthEnd },
+          date: { $gte: prevMonthStart, $lte: currentMonthEnd },
         },
       },
       {
-        $group: {
-          _id: '$category',
-          total: { $sum: '$amount' },
+        $facet: {
+          expenses: [
+            { $match: { type: 'expense' } },
+            {
+              $group: {
+                _id: {
+                  year: { $year: '$date' },
+                  month: { $month: '$date' },
+                  category: '$category',
+                },
+                total: { $sum: '$amount' },
+              },
+            },
+            {
+              $lookup: {
+                from: 'categories',
+                localField: '_id.category',
+                foreignField: '_id',
+                as: 'categoryInfo',
+              },
+            },
+            { $unwind: '$categoryInfo' },
+          ],
+          expenseSpending: [
+            { $match: { type: 'expense' } },
+            {
+              $group: {
+                _id: {
+                  year: { $year: '$date' },
+                  month: { $month: '$date' },
+                  category: '$category',
+                },
+                total: { $sum: '$amount' },
+              },
+            },
+          ],
+          income: [
+            {
+              $match: {
+                type: 'income',
+                date: { $gte: currentMonthStart, $lte: currentMonthEnd },
+              },
+            },
+            { $group: { _id: null, total: { $sum: '$amount' } } },
+          ],
         },
       },
-      {
-        $lookup: {
-          from: 'categories',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'categoryInfo',
-        },
-      },
-      { $unwind: '$categoryInfo' },
     ]),
-    Transaction.aggregate([
-      {
-        $match: {
-          user: userId,
-          type: 'expense',
-          date: { $gte: prevMonthStart, $lte: prevMonthEnd },
-        },
-      },
-      {
-        $group: {
-          _id: '$category',
-          total: { $sum: '$amount' },
-        },
-      },
-      {
-        $lookup: {
-          from: 'categories',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'categoryInfo',
-        },
-      },
-      { $unwind: '$categoryInfo' },
-    ]),
-    Transaction.aggregate([
-      {
-        $match: {
-          user: userId,
-          type: 'income',
-          date: { $gte: currentMonthStart, $lte: currentMonthEnd },
-        },
-      },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
-    ]),
+    Budget.find({
+      user: userId,
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+    }).populate('category', 'name').lean(),
+    RecurringTransaction.find({
+      user: userId,
+      status: 'active',
+      type: 'expense',
+      nextDueDate: { $gte: now, $lte: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) },
+    }).populate('category', 'name').lean(),
   ]);
+
+  const expenseRows = activity[0]?.expenses || [];
+  const currExpenses = expenseRows.filter(
+    (item) => item._id.year === now.getFullYear() && item._id.month === now.getMonth() + 1
+  ).map((item) => ({ ...item, _id: item._id.category }));
+  const prevExpenses = expenseRows.filter((item) => {
+    const previousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    return item._id.year === previousMonth.getFullYear() && item._id.month === previousMonth.getMonth() + 1;
+  }).map((item) => ({ ...item, _id: item._id.category }));
+  const currentSpending = (activity[0]?.expenseSpending || [])
+    .filter((item) => item._id.year === now.getFullYear() && item._id.month === now.getMonth() + 1)
+    .map((item) => ({ _id: item._id.category, total: item.total }));
+  const currIncome = activity[0]?.income || [];
 
   const insights = [];
 
@@ -155,12 +175,6 @@ export const generateSmartInsights = async (userId) => {
   }
 
   // Insight 3: Budgets near or over threshold
-  const activeBudgets = await Budget.find({
-    user: userId,
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
-  }).populate('category', 'name');
-
   for (const b of activeBudgets) {
     const catName = b.category ? b.category.name : 'Overall Monthly Budget';
     let spent = 0;
@@ -197,14 +211,6 @@ export const generateSmartInsights = async (userId) => {
   }
 
   // Insight 4: Upcoming recurring payments
-  const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const dueSoon = await RecurringTransaction.find({
-    user: userId,
-    status: 'active',
-    type: 'expense',
-    nextDueDate: { $gte: now, $lte: nextWeek },
-  }).populate('category', 'name');
-
   if (dueSoon.length > 0) {
     const dueTotal = dueSoon.reduce((s, r) => s + r.amount, 0);
     insights.push({
@@ -216,5 +222,5 @@ export const generateSmartInsights = async (userId) => {
     });
   }
 
-  return insights;
+  return { insights, activeBudgets, currentExpenses: currExpenses, currentSpending };
 };

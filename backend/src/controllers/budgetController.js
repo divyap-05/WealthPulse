@@ -14,43 +14,39 @@ export const getBudgets = async (req, res, next) => {
       user: req.user._id,
       month: queryMonth,
       year: queryYear,
-    }).populate('category', 'name icon color');
+    }).populate('category', 'name icon color').lean();
 
     // Calculate actual spending for each budget
     const startDate = new Date(queryYear, queryMonth - 1, 1);
     const endDate = new Date(queryYear, queryMonth, 0, 23, 59, 59, 999);
 
-    const budgetsWithSpent = await Promise.all(
-      budgets.map(async (b) => {
-        const txQuery = {
+    const spendingByCategory = await Transaction.aggregate([
+      {
+        $match: {
           user: req.user._id,
           type: 'expense',
           date: { $gte: startDate, $lte: endDate },
-        };
+        },
+      },
+      { $group: { _id: '$category', total: { $sum: '$amount' } } },
+    ]);
+    const spendingMap = new Map(spendingByCategory.map(({ _id, total }) => [String(_id), total]));
+    const totalSpent = spendingByCategory.reduce((sum, { total }) => sum + total, 0);
 
-        if (b.category) {
-          txQuery.category = b.category._id;
-        }
+    const budgetsWithSpent = budgets.map((b) => {
+      const spent = b.category ? spendingMap.get(String(b.category._id)) || 0 : totalSpent;
+      const remaining = b.amount - spent;
+      const percentageUsed = b.amount > 0 ? Math.round((spent / b.amount) * 100) : 0;
 
-        const spending = await Transaction.aggregate([
-          { $match: txQuery },
-          { $group: { _id: null, total: { $sum: '$amount' } } },
-        ]);
-
-        const spent = spending.length > 0 ? spending[0].total : 0;
-        const remaining = b.amount - spent;
-        const percentageUsed = b.amount > 0 ? Math.round((spent / b.amount) * 100) : 0;
-
-        return {
-          ...b.toObject(),
-          spent,
-          remaining,
-          percentageUsed,
-          isExceeded: spent > b.amount,
-          isNearThreshold: percentageUsed >= b.alertThreshold && spent <= b.amount,
-        };
-      })
-    );
+      return {
+        ...b,
+        spent,
+        remaining,
+        percentageUsed,
+        isExceeded: spent > b.amount,
+        isNearThreshold: percentageUsed >= b.alertThreshold && spent <= b.amount,
+      };
+    });
 
     res.status(200).json({
       success: true,

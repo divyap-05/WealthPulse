@@ -1,22 +1,31 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 
-// Pages
-import { LandingPage } from './pages/LandingPage';
-import { LoginPage } from './pages/LoginPage';
-import { RegisterPage } from './pages/RegisterPage';
-import { ForgotPasswordPage, ResetPasswordPage } from './pages/PasswordPages';
-import { VerifyEmailPage } from './pages/VerifyEmailPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { TransactionsPage } from './pages/TransactionsPage';
-import { BudgetsPage } from './pages/BudgetsPage';
-import { SavingsGoalsPage } from './pages/SavingsGoalsPage';
-import { RecurringPage } from './pages/RecurringPage';
-import { ReportsPage } from './pages/ReportsPage';
-import { CategoriesPage } from './pages/CategoriesPage';
-import { ProfilePage } from './pages/ProfilePage';
+const lazyPage = (loader, exportName) =>
+  React.lazy(() => loader().then((module) => ({ default: module[exportName] })));
+
+const LandingPage = lazyPage(() => import('./pages/LandingPage'), 'LandingPage');
+const LoginPage = lazyPage(() => import('./pages/LoginPage'), 'LoginPage');
+const RegisterPage = lazyPage(() => import('./pages/RegisterPage'), 'RegisterPage');
+const ForgotPasswordPage = lazyPage(() => import('./pages/PasswordPages'), 'ForgotPasswordPage');
+const ResetPasswordPage = lazyPage(() => import('./pages/PasswordPages'), 'ResetPasswordPage');
+const VerifyEmailPage = lazyPage(() => import('./pages/VerifyEmailPage'), 'VerifyEmailPage');
+const DashboardPage = lazyPage(() => import('./pages/DashboardPage'), 'DashboardPage');
+const TransactionsPage = lazyPage(() => import('./pages/TransactionsPage'), 'TransactionsPage');
+const BudgetsPage = lazyPage(() => import('./pages/BudgetsPage'), 'BudgetsPage');
+const SavingsGoalsPage = lazyPage(() => import('./pages/SavingsGoalsPage'), 'SavingsGoalsPage');
+const RecurringPage = lazyPage(() => import('./pages/RecurringPage'), 'RecurringPage');
+const ReportsPage = lazyPage(() => import('./pages/ReportsPage'), 'ReportsPage');
+const CategoriesPage = lazyPage(() => import('./pages/CategoriesPage'), 'CategoriesPage');
+const ProfilePage = lazyPage(() => import('./pages/ProfilePage'), 'ProfilePage');
+
+const PageLoading = () => (
+  <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 // Protected Route Guard
 const ProtectedRoute = ({ children }) => {
@@ -61,6 +70,7 @@ export const App = () => {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
+          <Suspense fallback={<PageLoading />}>
           <Routes>
             {/* Public Pages */}
             <Route path="/" element={<LandingPage />} />
@@ -153,6 +163,7 @@ export const App = () => {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
