@@ -7,6 +7,10 @@ import { validateConfig } from './src/config/env.js';
 const app = express();
 let connectionPromise;
 
+// Vercel places one trusted proxy in front of this function. Trust only that
+// hop so Express and express-rate-limit use the forwarded client IP safely.
+app.set('trust proxy', 1);
+
 app.use(async (req, res, next) => {
   try {
     validateConfig();
