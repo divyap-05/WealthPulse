@@ -29,7 +29,9 @@ export const connectDB = async (customUri = null) => {
         console.error('[Database Error] Embedded MongoDB fallback failed.');
       }
     } else {
-      process.exit(1);
+      // Let the caller decide how to handle the failure. A process exit here
+      // would terminate a Vercel function before it can return an API response.
+      throw error;
     }
   }
 };
