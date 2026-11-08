@@ -58,7 +58,8 @@ const PublicRoute = ({ children }) => {
     );
   }
 
-  if (user) {
+  // A demo session should not prevent visitors from opening login or registration.
+  if (user && !user.isDemo) {
     return <Navigate to="/dashboard" replace />;
   }
 

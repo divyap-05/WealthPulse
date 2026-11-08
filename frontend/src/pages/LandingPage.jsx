@@ -82,7 +82,8 @@ const faqs = [
 ];
 
 export const LandingPage = () => {
-  const { enterDemo, isAuthenticated } = useAuth();
+  const { enterDemo, isAuthenticated, user } = useAuth();
+  const hasAccountSession = isAuthenticated && !user?.isDemo;
   const [demoLoading, setDemoLoading] = React.useState(false);
   const [demoError, setDemoError] = React.useState('');
   const navigate = useNavigate();
@@ -119,7 +120,7 @@ export const LandingPage = () => {
 
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ThemeToggle />
-            {isAuthenticated ? (
+            {hasAccountSession ? (
               <Link to="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-colors hover:bg-purple-600">
                 Dashboard <ArrowRight className="h-4 w-4" />
               </Link>
@@ -158,7 +159,7 @@ export const LandingPage = () => {
               )}
 
               <div className="flex flex-col justify-center gap-3 sm:flex-row lg:justify-start">
-                {!isAuthenticated && (
+                {!hasAccountSession && (
                   <Link to="/register" className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-7 py-3.5 text-base font-semibold text-white shadow-xl shadow-purple-500/25 transition-all hover:bg-purple-600">
                     Create your account <ArrowRight className="h-5 w-5" />
                   </Link>
@@ -290,7 +291,7 @@ export const LandingPage = () => {
             <h2 className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">Start with a clearer picture.</h2>
             <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-700 dark:text-slate-400">Create your own workspace or explore the interactive demo before getting started.</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              {!isAuthenticated && <Link to="/register" className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-colors hover:bg-purple-600">Create an account <ArrowRight className="h-4 w-4" /></Link>}
+              {!hasAccountSession && <Link to="/register" className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-primary px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-colors hover:bg-purple-600">Create an account <ArrowRight className="h-4 w-4" /></Link>}
               <button onClick={handleDemoClick} disabled={demoLoading} className="rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-white/10 dark:text-slate-200">{demoLoading ? 'Opening demo…' : 'Explore demo'}</button>
             </div>
           </div>
