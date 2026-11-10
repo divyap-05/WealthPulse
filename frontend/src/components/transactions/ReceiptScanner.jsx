@@ -3,7 +3,7 @@ import { AlertTriangle, FileText, LoaderCircle, ScanLine, ShieldCheck, Upload, X
 import { extractDocumentText } from '../../services/aiDocuments';
 import { apiRequest } from '../../services/api';
 
-export const ReceiptScanner = ({ onClose, onUseDraft }) => {
+export const ReceiptScanner = ({ onClose, onUseDrafts }) => {
   const [file, setFile] = useState(null);
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState([]);
