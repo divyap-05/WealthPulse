@@ -19,7 +19,7 @@ WealthPulse is an AI-assisted personal finance tracker for recording income and 
 - Monthly transaction exports in **CSV** and **PDF**. The PDF preview includes total income, total expenses, and net cash flow.
 - Interactive demo account and **dark** and **light** themes.
 - **AI transaction document scanner:** extracts PDF text or runs image OCR in your browser, then uses Gemini to identify individual transaction entries. Review the list, leave possible duplicates unchecked or select them if needed, and add selected entries together. Imported, skipped, and failed entries are marked in the review list.
-- **AI Money Coach:** ask about spending, cash flow, budgets, and savings. Gemini explains calculations based on a summary of the signed-in user's own financial data. Demo accounts use scripted offline sample replies and a sample scanner preview; neither sends requests to Gemini or saves sample transactions.
+- **AI Money Coach:** ask about spending, cash flow, budgets, and savings. Gemini explains calculations based on a summary of the signed-in user's own financial data. The latest 15 redacted chat exchanges are saved per account and can be cleared in the chat. Previous exchanges are not sent to Gemini. Demo accounts use scripted offline sample replies and a sample scanner preview; neither sends requests to Gemini or saves sample transactions.
 - Email verification and password recovery are optional and require backend SMTP configuration. Without SMTP configured, those email features are unavailable; signed-in users can still change their password in Profile settings.
 
 ## Technology stack
@@ -59,10 +59,16 @@ WealthPulse is an AI-assisted personal finance tracker for recording income and 
 <!-- Add a screenshot of the scanner's extracted transaction list and duplicate indicators. -->
 ![WealthPulse AI transaction scanner](screenshots/ai-transaction-scanner.png)
 
+### Demo working
+![WealthPulse AI transaction scanner](screenshots/ai-transaction-scanner-demo.png)
+
 ### AI Money Coach
 
 <!-- Add a screenshot of the AI Money Coach conversation screen. -->
 ![WealthPulse AI Money Coach](screenshots/ai-money-coach.png)
+
+### Demo working 
+![WealthPulse AI Money Coach demo](screenshots/ai-money-coach-demo.png)
 
 ### Transactions and downloads
 
@@ -199,7 +205,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 
 All backend credentials must remain in the backend environment and must not use the `VITE_` prefix. Production requires `MONGODB_URI` and `FRONTEND_URL`; `JWT_SECRET` and `COOKIE_SECRET` must each be at least 32 characters. Keep `.env` files private. `GEMINI_API_KEY` is optional; without it, the rest of WealthPulse works and AI endpoints report that AI is not configured.
 
-The scanner extracts PDF text and runs OCR in your browser. It sends only editable, redacted extracted text to the backend; the original document is not uploaded. Review the text because automated redaction can miss details. The chatbot sends your question and an aggregate summary of your own financial data, not individual transaction titles or chat history. Both AI screens ask for consent. Google's Gemini API terms say unpaid-tier content may be used to improve Google products and advise against submitting sensitive, confidential, or personal information; financial details may be sensitive, so use the AI tools only if you accept that policy. Use a Gemini free-tier project with billing disabled to avoid paid API usage.
+The scanner extracts PDF text and runs OCR in your browser. It sends only editable, redacted extracted text to the backend; the original document is not uploaded. Review the text because automated redaction can miss details. The chatbot sends your current question and an aggregate summary of your own financial data, not individual transaction titles or previous chat messages. The backend stores up to 15 redacted exchanges per account in MongoDB Atlas; clear them from the chat screen at any time. Both AI screens ask for consent. Google's Gemini API terms say unpaid-tier content may be used to improve Google products and advise against submitting sensitive, confidential, or personal information; financial details may be sensitive, so use the AI tools only if you accept that policy. Use a Gemini free-tier project with billing disabled to avoid paid API usage.
 
 ### 3. Start the backend
 

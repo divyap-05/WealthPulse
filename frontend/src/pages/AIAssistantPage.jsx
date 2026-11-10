@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Bot, LoaderCircle, Send, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Bot, LoaderCircle, Send, ShieldCheck, Sparkles, Trash2, UserRound } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { apiRequest } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +26,48 @@ export const AIAssistantPage = () => {
   const [consent, setConsent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [historyNotice, setHistoryNotice] = useState('');
+  const [historyLoading, setHistoryLoading] = useState(() => !user?.isDemo);
+  const [clearingHistory, setClearingHistory] = useState(false);
   const [remaining, setRemaining] = useState(null);
+
+  useEffect(() => {
+    if (isDemo) {
+      setHistoryLoading(false);
+      return undefined;
+    }
+    let active = true;
+    apiRequest('/ai/chat/history')
+      .then((response) => {
+        if (!active) return;
+        const exchanges = response.data.messages || [];
+        setMessages(exchanges.flatMap((exchange) => [
+          { role: 'user', text: exchange.question },
+          { role: 'assistant', text: exchange.reply },
+        ]));
+      })
+      .catch(() => {
+        if (active) setHistoryNotice('Saved chat history could not be loaded. You can still ask a new question.');
+      })
+      .finally(() => {
+        if (active) setHistoryLoading(false);
+      });
+    return () => { active = false; };
+  }, [isDemo]);
+
+  const handleClearHistory = async () => {
+    if (!window.confirm('Clear your saved AI chat history? This cannot be undone.')) return;
+    setClearingHistory(true);
+    setHistoryNotice('');
+    try {
+      await apiRequest('/ai/chat/history', { method: 'DELETE' });
+      setMessages([]);
+    } catch (err) {
+      setHistoryNotice(err.message || 'Could not clear chat history. Please try again.');
+    } finally {
+      setClearingHistory(false);
+    }
+  };
 
   const submitQuestion = async (event) => {
     event.preventDefault();
@@ -49,8 +90,18 @@ export const AIAssistantPage = () => {
         method: 'POST',
         body: JSON.stringify({ message }),
       });
-      setMessages((current) => [...current, { role: 'assistant', text: response.data.reply }]);
+      setMessages((current) => {
+        const updated = [...current];
+        for (let index = updated.length - 1; index >= 0; index -= 1) {
+          if (updated[index].role === 'user') {
+            updated[index] = { ...updated[index], text: response.data.savedQuestion || message };
+            break;
+          }
+        }
+        return [...updated, { role: 'assistant', text: response.data.reply }];
+      });
       setRemaining(response.data.usage.remaining);
+      setHistoryNotice(response.data.historySaved ? '' : 'Your reply arrived, but this exchange could not be saved.');
     } catch (err) {
       setError(err.message || 'The AI coach could not answer right now.');
       setMessages((current) => current.slice(0, -1));
@@ -76,7 +127,7 @@ export const AIAssistantPage = () => {
         ) : (
         <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-xs leading-relaxed text-amber-900 dark:text-amber-200">
           <div className="mb-1 flex items-center gap-2 font-bold"><ShieldCheck className="h-4 w-4" />Privacy and free-tier notice</div>
-          The backend sends your question after masking common sensitive identifiers, along with a summary of your own account's monthly totals, categories, budgets, and goals. It does not send transaction titles, account identifiers, or conversation history, and it does not store chats. Google may use free-tier content to improve its products and says not to submit sensitive, confidential, or personal information to unpaid services. Financial summaries may be sensitive, so continue only if you accept that policy. Do not include account numbers, addresses, or other details you would not share with Google. Read the <a className="underline" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini API terms</a>.
+          The backend sends your current question after masking common sensitive identifiers, along with a summary of your own account's monthly totals, categories, budgets, and goals. It does not send previous chat messages or transaction titles to Gemini. The latest 15 redacted question-and-answer exchanges are saved to your account; you can clear them at any time. Google may use free-tier content to improve its products and says not to submit sensitive, confidential, or personal information to unpaid services. Financial summaries may be sensitive, so continue only if you accept that policy. Do not include account numbers, addresses, or other details you would not share with Google. Read the <a className="underline" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noreferrer">Gemini API terms</a>.
         </div>
         )}
 
@@ -87,8 +138,17 @@ export const AIAssistantPage = () => {
           </label>
         )}
 
+        {!isDemo && messages.length > 0 && (
+          <div className="mb-3 flex justify-end">
+            <button type="button" onClick={handleClearHistory} disabled={clearingHistory || historyLoading} className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-slate-500 hover:bg-red-500/10 hover:text-red-600 disabled:opacity-50 dark:text-slate-400 dark:hover:text-red-300">
+              <Trash2 className="h-4 w-4" />{clearingHistory ? 'Clearing…' : 'Clear history'}
+            </button>
+          </div>
+        )}
+
         <div className="mb-4 min-h-64 space-y-4 rounded-2xl border border-white/10 bg-white/70 p-4 dark:bg-white/5 sm:p-6" aria-live="polite">
-          {messages.length === 0 && <div className="flex min-h-56 flex-col items-center justify-center text-center text-slate-500 dark:text-slate-400"><Bot className="mb-3 h-9 w-9 text-brand-primary" /><p className="font-semibold">{isDemo ? 'Try the offline Money Coach demo.' : 'Your account summary stays scoped to you.'}</p><p className="mt-1 text-sm">Try “How can I review my spending?”</p></div>}
+          {historyLoading && <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Loading saved conversations…</div>}
+          {!historyLoading && messages.length === 0 && <div className="flex min-h-56 flex-col items-center justify-center text-center text-slate-500 dark:text-slate-400"><Bot className="mb-3 h-9 w-9 text-brand-primary" /><p className="font-semibold">{isDemo ? 'Try the offline Money Coach demo.' : 'Your account summary stays scoped to you.'}</p><p className="mt-1 text-sm">Try “How can I review my spending?”</p></div>}
           {messages.map((item, index) => (
             <div key={`${item.role}-${index}`} className={`flex gap-3 ${item.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {item.role === 'assistant' && <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-brand-primary/15 text-brand-primary"><Bot className="h-4 w-4" /></span>}
@@ -99,10 +159,10 @@ export const AIAssistantPage = () => {
           {loading && <div className="flex items-center gap-2 text-sm text-slate-500"><LoaderCircle className="h-4 w-4 animate-spin" />Reviewing your summary…</div>}
         </div>
 
-        {error && <p role="alert" className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-300">{error}</p>}
+        {(error || historyNotice) && <p role="alert" className="mb-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600 dark:text-red-300">{error || historyNotice}</p>}
         <form onSubmit={submitQuestion} className="flex gap-2">
           <input value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={1200} placeholder={isDemo ? 'Try a sample finance question…' : 'Ask about your finances…'} className="min-w-0 flex-1 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 focus:border-brand-primary focus:outline-none dark:border-white/10 dark:bg-[#191820] dark:text-white" />
-          <button type="submit" disabled={(!isDemo && !consent) || !question.trim() || loading} className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-sm font-semibold text-white hover:bg-purple-600 disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-4 w-4" /><span className="hidden sm:inline">Ask</span></button>
+          <button type="submit" disabled={(!isDemo && (!consent || historyLoading)) || !question.trim() || loading} className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-3 text-sm font-semibold text-white hover:bg-purple-600 disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-4 w-4" /><span className="hidden sm:inline">Ask</span></button>
         </form>
         <p className="mt-2 text-right text-xs text-slate-500">{isDemo ? 'Offline sample replies · no AI requests' : remaining === null ? 'Up to 20 coach questions per day' : `${remaining} coach questions remaining today`} · Answers are informational, not professional financial advice.</p>
       </div>

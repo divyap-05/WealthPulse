@@ -1,5 +1,10 @@
 import { Router } from 'express';
-import { askFinancialCoach, scanReceiptText } from '../controllers/aiController.js';
+import {
+  askFinancialCoach,
+  clearCoachChatHistory,
+  getCoachChatHistory,
+  scanReceiptText,
+} from '../controllers/aiController.js';
 import { protect } from '../middleware/auth.js';
 import { aiLimiter } from '../middleware/rateLimit.js';
 import { validate } from '../middleware/validate.js';
@@ -14,7 +19,10 @@ const blockDemoAI = (req, res, next) => {
   next();
 };
 
+router.use(blockDemoAI);
+router.get('/chat/history', getCoachChatHistory);
+router.delete('/chat/history', clearCoachChatHistory);
 router.post('/chat', blockDemoAI, aiLimiter, validate(chatSchema), askFinancialCoach);
-router.post('/receipt/scan', blockDemoAI, aiLimiter, validate(receiptScanSchema), scanReceiptText);
+router.post('/receipt/scan', aiLimiter, validate(receiptScanSchema), scanReceiptText);
 
 export default router;

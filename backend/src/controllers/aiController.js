@@ -1,4 +1,5 @@
 import AIUsage from '../models/AIUsage.js';
+import AIChatHistory from '../models/AIChatHistory.js';
 import Budget from '../models/Budget.js';
 import Category from '../models/Category.js';
 import SavingsGoal from '../models/SavingsGoal.js';
@@ -11,6 +12,51 @@ const money = (paise) => Number((paise / 100).toFixed(2));
 const startOfUtcDay = () => {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+};
+
+const saveChatExchange = async (userId, question, reply) => {
+  const update = {
+    $push: {
+      messages: {
+        $each: [{ question, reply, createdAt: new Date() }],
+        $slice: -15,
+      },
+    },
+  };
+  try {
+    await AIChatHistory.findOneAndUpdate({ user: userId }, update, {
+      new: true,
+      upsert: true,
+      runValidators: true,
+      setDefaultsOnInsert: false,
+    });
+  } catch (error) {
+    if (error.code !== 11000) throw error;
+    await AIChatHistory.findOneAndUpdate({ user: userId }, update, {
+      new: true,
+      runValidators: true,
+    });
+  }
+};
+
+export const getCoachChatHistory = async (req, res, next) => {
+  try {
+    const history = await AIChatHistory.findOne({ user: req.user._id }).select('messages').lean();
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, data: { messages: history?.messages || [] } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const clearCoachChatHistory = async (req, res, next) => {
+  try {
+    await AIChatHistory.deleteOne({ user: req.user._id });
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, message: 'Chat history cleared.' });
+  } catch (error) {
+    next(error);
+  }
 };
 
 const consumeUsage = async (userId, field) => {
@@ -144,8 +190,15 @@ export const askFinancialCoach = async (req, res, next) => {
       `Authenticated user's computed financial summary (INR): ${JSON.stringify(context)}`,
     ].join('\n\n'));
     const reply = await requestGemini(prompt, { maxOutputTokens: 500 });
+    let historySaved = true;
+    try {
+      await saveChatExchange(req.user._id, message, reply);
+    } catch {
+      historySaved = false;
+      console.error('[AI Chat History] Could not save chat exchange.');
+    }
     res.set('Cache-Control', 'no-store');
-    res.json({ success: true, data: { reply, usage } });
+    res.json({ success: true, data: { reply, usage, savedQuestion: message, historySaved } });
   } catch (error) {
     next(error);
   }
