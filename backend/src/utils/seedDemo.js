@@ -8,7 +8,7 @@ import SavingsGoal from '../models/SavingsGoal.js';
 import RecurringTransaction from '../models/RecurringTransaction.js';
 import { seedUserDefaults } from '../services/userSeedService.js';
 import { toPaise } from '../utils/currency.js';
-import { generateToken, setAuthCookie } from '../utils/token.js';
+import { generateToken, setDemoAuthCookie } from '../utils/token.js';
 
 export const DEMO_USER_EMAIL = 'demo@expensetracker.local';
 
@@ -290,7 +290,7 @@ export const enterDemoAccount = async (req, res, next) => {
   try {
     const demoUser = await seedDemoUserAndData();
     const token = generateToken(demoUser._id, demoUser.authTokenVersion || 0);
-    setAuthCookie(res, token);
+    setDemoAuthCookie(res, token);
 
     res.status(200).json({
       success: true,

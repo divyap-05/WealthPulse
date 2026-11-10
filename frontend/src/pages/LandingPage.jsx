@@ -122,7 +122,7 @@ export const LandingPage = () => {
             <ThemeToggle />
             {hasAccountSession ? (
               <Link to="/dashboard" className="inline-flex items-center gap-2 rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition-colors hover:bg-purple-600">
-                Dashboard <ArrowRight className="h-4 w-4" />
+                Back to dashboard <ArrowRight className="h-4 w-4" />
               </Link>
             ) : (
               <>

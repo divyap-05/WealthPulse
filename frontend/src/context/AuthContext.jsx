@@ -71,12 +71,17 @@ export const AuthProvider = ({ children }) => {
   }, [checkAuth]);
 
   const logout = useCallback(async () => {
+    const requestRevision = authStateRevision.current + 1;
+    authStateRevision.current = requestRevision;
     try {
       await apiRequest('/auth/logout', { method: 'POST' });
-    } finally {
-      setUser(null);
+      // Exiting a demo clears its temporary cookie and can reveal the
+      // still-valid personal account cookie underneath it.
+      if (authStateRevision.current === requestRevision) await checkAuth();
+    } catch {
+      if (authStateRevision.current === requestRevision) setUser(null);
     }
-  }, []);
+  }, [checkAuth]);
 
   const updateProfile = useCallback(async (data) => {
     const res = await apiRequest('/auth/profile', {
