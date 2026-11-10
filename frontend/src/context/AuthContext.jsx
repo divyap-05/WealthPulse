@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { apiRequest } from '../services/api';
 
 const AuthContext = createContext();
@@ -6,17 +6,17 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const authStateRevision = useRef(0);
 
   const checkAuth = useCallback(async () => {
+    const requestRevision = authStateRevision.current;
     try {
       const res = await apiRequest('/auth/me');
-      if (res.success && res.user) {
-        setUser(res.user);
-      } else {
-        setUser(null);
+      if (authStateRevision.current === requestRevision) {
+        setUser(res.success && res.user ? res.user : null);
       }
     } catch (err) {
-      setUser(null);
+      if (authStateRevision.current === requestRevision) setUser(null);
     } finally {
       setLoading(false);
     }
@@ -49,14 +49,24 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const enterDemo = useCallback(async () => {
-    const res = await apiRequest('/demo/enter', {
-      method: 'POST',
-    });
-    if (res.success && res.user) {
-      setUser(res.user);
+    // Invalidate any earlier /auth/me request so its old account response
+    // cannot overwrite the demo identity after this transition succeeds.
+    const requestRevision = authStateRevision.current + 1;
+    authStateRevision.current = requestRevision;
+    try {
+      const res = await apiRequest('/demo/enter', {
+        method: 'POST',
+      });
+      if (authStateRevision.current === requestRevision && res.success && res.user) {
+        setUser(res.user);
+      }
+      return res;
+    } catch (error) {
+      // If demo entry fails, restore the session identity that is still in the cookie.
+      if (authStateRevision.current === requestRevision) await checkAuth();
+      throw error;
     }
-    return res;
-  }, []);
+  }, [checkAuth]);
 
   const logout = useCallback(async () => {
     try {
