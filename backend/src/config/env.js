@@ -38,6 +38,7 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || 'dev_secret_only_change_in_production_32chars',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   cookieSecret: process.env.COOKIE_SECRET || 'cookie_secret_at_least_32_characters_dev',
+  geminiApiKey: process.env.GEMINI_API_KEY || null,
   email: {
     host: process.env.EMAIL_HOST || null,
     port: parseInt(process.env.EMAIL_PORT || '587', 10),

@@ -16,6 +16,7 @@ dist-ssr/
 # Environment files
 .env*
 
+
 # Editor / OS
 .DS_Store
 Thumbs.db
@@ -26,4 +27,5 @@ Thumbs.db
 GEMINI.md
 DEPLOYMENT.md
 AGENTS.md
+
 

@@ -13,6 +13,7 @@ import budgetRoutes from './routes/budgetRoutes.js';
 import savingsGoalRoutes from './routes/savingsGoalRoutes.js';
 import recurringRoutes from './routes/recurringRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import aiRoutes from './routes/aiRoutes.js';
 import { enterDemoAccount } from './utils/seedDemo.js';
 import { authLimiter } from './middleware/rateLimit.js';
 
@@ -76,6 +77,7 @@ export const createApp = () => {
   app.use('/api/goals', savingsGoalRoutes);
   app.use('/api/recurring', recurringRoutes);
   app.use('/api/analytics', analyticsRoutes);
+  app.use('/api/ai', aiRoutes);
 
   // 404 handler for unknown routes
   app.use('*', (req, res) => {

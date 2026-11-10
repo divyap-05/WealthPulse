@@ -17,6 +17,7 @@ import {
   X,
   ArrowLeft,
   Sparkles,
+  Bot,
   LineChart,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +30,7 @@ const navigationLinks = [
   { name: 'Savings Goals', path: '/goals', icon: Target },
   { name: 'Recurring', path: '/recurring', icon: Repeat },
   { name: 'Reports & Analytics', path: '/reports', icon: BarChart3 },
+  { name: 'AI Money Coach', path: '/assistant', icon: Bot },
   { name: 'Categories', path: '/categories', icon: Tags },
   { name: 'Profile & Settings', path: '/profile', icon: UserCheck },
 ];

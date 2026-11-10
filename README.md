@@ -14,17 +14,19 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 - Monthly budget tracking with spending progress and over-budget amounts.
 - Savings goals with contributions and withdrawals.
 - Recurring transaction rules for regular income and expenses.
-- Dashboard **summaries**, **charts**, **reports**, and **rule-based financial insights**. Insights are calculated from account data; no AI service is used.
+- Dashboard **summaries**, **charts**, **reports**, and **rule-based financial insights**. Dashboard insights are calculated directly from account data and do not use the optional Gemini service.
 - Monthly transaction exports in **CSV** and **PDF**. The PDF preview includes total income, total expenses, and net cash flow.
 - Interactive demo account and **dark** and **light** themes.
+- AI receipt and bill scanning with browser-side PDF/image text extraction, sensitive-data masking, duplicate warnings, and a review-before-save transaction draft.
+- AI Money Coach that explains calculations based on the signed-in user's aggregated income, spending, budgets, and goals.
 - Optional email verification and password recovery when SMTP delivery is configured. Without SMTP, recovery is unavailable; signed-in users can change their password in Profile settings.
 
 ## Technology stack
 
 | Area | Technologies |
 | --- | --- |
-| Frontend |**React 18, Vite, React Router, Tailwind CSS, Recharts, Lucide React**|
-| Backend | **Node.js, Express 4, Mongoose** |
+| Frontend | **React 18, Vite, React Router, Tailwind CSS, Recharts, Lucide React, PDF.js, Tesseract.js** |
+| Backend | **Node.js, Express 4, Mongoose, Google Gemini API (`gemini-3.1-flash-lite`, optional free tier)** |
 | Database | **MongoDB Atlas** |
 | Validation | **Zod** |
 | Authentication | **bcryptjs password hashing, JSON Web Tokens, HTTP-only cookies** |
@@ -87,7 +89,7 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 │   │   ├── middleware/   # Authentication, validation, rate limits, errors
 │   │   ├── models/       # Mongoose models
 │   │   ├── routes/       # Express routes
-│   │   ├── services/     # Email, insights, recurring transactions
+│   │   ├── services/     # Email, AI, insights, recurring transactions
 │   │   ├── utils/        # Tokens, currency, seed helpers
 │   │   ├── validators/   # Zod request schemas
 │   │   ├── app.js        # Express middleware and route setup
@@ -97,10 +99,10 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 ├── frontend/
 │   ├── public/           # Static assets and favicon
 │   ├── src/
-│   │   ├── components/   # Shared UI and layout
+│   │   ├── components/   # Shared UI, layout, and receipt scanner
 │   │   ├── context/      # Authentication and theme state
-│   │   ├── pages/        # Application screens
-│   │   ├── services/     # API client
+│   │   ├── pages/        # Application screens, including AI Money Coach
+│   │   ├── services/     # API client and browser document extraction/redaction
 │   │   ├── utils/        # Formatting helpers
 │   │   ├── App.jsx       # Application routes
 │   │   └── main.jsx      # React entry point
@@ -115,7 +117,7 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 
 ### Requirements
 
-- Node.js 18 or newer and npm.
+- Node.js 20 or newer and npm.
 - A MongoDB connection for persistent account data.
 
 ### 1. Clone the repository and install dependencies
@@ -161,6 +163,7 @@ VITE_API_URL=http://localhost:5000/api
 | `EMAIL_USER` | No | SMTP username. |
 | `EMAIL_PASS` | No | Private SMTP password. |
 | `EMAIL_FROM` | No | Sender address used for email. |
+| `GEMINI_API_KEY` | No | Private Google Gemini API key; enables AI chat and receipt scanning. Must stay in the backend environment. |
 
 Example `backend/.env`:
 
@@ -178,9 +181,12 @@ EMAIL_PORT=587
 EMAIL_USER=
 EMAIL_PASS=
 EMAIL_FROM=WealthPulse <noreply@example.test>
+GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
-All backend credentials must remain in the backend environment and must not use the `VITE_` prefix. Production requires `MONGODB_URI` and `FRONTEND_URL`; `JWT_SECRET` and `COOKIE_SECRET` must each be at least 32 characters. Keep `.env` files private.
+All backend credentials must remain in the backend environment and must not use the `VITE_` prefix. Production requires `MONGODB_URI` and `FRONTEND_URL`; `JWT_SECRET` and `COOKIE_SECRET` must each be at least 32 characters. Keep `.env` files private. `GEMINI_API_KEY` is optional; without it, the rest of WealthPulse works and AI endpoints report that AI is not configured.
+
+The scanner extracts PDF text and runs OCR in your browser. It sends only editable, redacted extracted text to the backend; the original document is not uploaded. Review the text because automated redaction can miss details. The chatbot sends your question and an aggregate summary of your own financial data, not individual transaction titles or chat history. Both AI screens ask for consent. Google's Gemini API terms say unpaid-tier content may be used to improve Google products and advise against submitting sensitive, confidential, or personal information; financial details may be sensitive, so use the AI tools only if you accept that policy. Use a Gemini free-tier project with billing disabled to avoid paid API usage.
 
 ### 3. Start the backend
 
@@ -222,7 +228,7 @@ Email verification and password recovery require configured SMTP delivery. Witho
 - Configure a production **email provider** for **account verification** and **email-based password recovery**.
 - Add optional bank transaction imports.
 - Add more export formats and customizable report periods.
-- **AI Integration:** Personalized AI finance chatbot, AI-powered receipt and bill scanning, automated transaction generation, and intelligent financial insights.
+- Add broader OCR language support and additional local redaction patterns.
 
 ## Author
 ### DIVYA RAVINDRA PAI

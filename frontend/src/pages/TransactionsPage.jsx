@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import {
   Plus,
   Search,
@@ -15,10 +15,14 @@ import {
   AlertCircle,
   Download,
   FileText,
+  ScanLine,
+  AlertTriangle,
 } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { apiDownload, apiRequest } from '../services/api';
 import { formatINR, formatDate, toRupees } from '../utils/formatters';
+
+const ReceiptScanner = React.lazy(() => import('../components/transactions/ReceiptScanner').then((module) => ({ default: module.ReceiptScanner })));
 
 const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
   '&': '&amp;',
@@ -60,6 +64,9 @@ export const TransactionsPage = () => {
   const [editingTx, setEditingTx] = useState(null);
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState('');
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [possibleDuplicates, setPossibleDuplicates] = useState([]);
+  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
 
   // Form Fields
   const [formData, setFormData] = useState({
@@ -110,6 +117,8 @@ export const TransactionsPage = () => {
 
   const handleOpenAddModal = () => {
     setEditingTx(null);
+    setPossibleDuplicates([]);
+    setDuplicateConfirmed(false);
     setFormData({
       title: '',
       amount: '',
@@ -125,6 +134,8 @@ export const TransactionsPage = () => {
 
   const handleOpenEditModal = (tx) => {
     setEditingTx(tx);
+    setPossibleDuplicates([]);
+    setDuplicateConfirmed(false);
     setFormData({
       title: tx.title,
       amount: toRupees(tx.amount),
@@ -138,12 +149,36 @@ export const TransactionsPage = () => {
     setIsModalOpen(true);
   };
 
+  const handleUseScannedDraft = (draft, duplicates) => {
+    const defaultCategory = categories.find((category) => category._id === draft.categoryId)
+      || categories.find((category) => category.type === draft.type);
+    setEditingTx(null);
+    setFormData({
+      title: draft.title,
+      amount: String(draft.amount),
+      type: draft.type,
+      category: defaultCategory?._id || '',
+      paymentMethod: paymentMethods[0]?._id || '',
+      date: draft.date || new Date().toISOString().split('T')[0],
+      note: draft.note || '',
+    });
+    setPossibleDuplicates(duplicates);
+    setDuplicateConfirmed(false);
+    setModalError('');
+    setScannerOpen(false);
+    setIsModalOpen(true);
+  };
+
   const handleFormSubmit = async (e) => {
     e.preventDefault();
     setModalError('');
 
     if (!formData.title || !formData.amount || !formData.category) {
       setModalError('Please fill in title, amount, and select a category.');
+      return;
+    }
+    if (possibleDuplicates.length > 0 && !duplicateConfirmed) {
+      setModalError('Review the possible duplicate warning and confirm before saving.');
       return;
     }
 
@@ -419,6 +454,14 @@ export const TransactionsPage = () => {
             <span>{exporting ? 'Preparing…' : 'Download PDF'}</span>
           </button>
           <button
+            type="button"
+            onClick={() => setScannerOpen(true)}
+            className="px-4 py-2.5 rounded-xl border border-brand-primary/40 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary dark:text-brand-secondary font-semibold text-sm transition-all flex items-center gap-2"
+          >
+            <ScanLine className="w-4 h-4" />
+            <span>Scan receipt</span>
+          </button>
+          <button
             onClick={handleOpenAddModal}
             className="px-4 py-2.5 rounded-xl bg-brand-primary hover:bg-purple-600 text-white font-semibold text-sm transition-all shadow-lg shadow-purple-500/20 flex items-center gap-2"
           >
@@ -433,6 +476,12 @@ export const TransactionsPage = () => {
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
+      )}
+
+      {scannerOpen && (
+        <Suspense fallback={<div role="status" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 text-white">Loading document scanner…</div>}>
+          <ReceiptScanner onClose={() => setScannerOpen(false)} onUseDraft={handleUseScannedDraft} />
+        </Suspense>
       )}
 
       {/* Filter and Search Bar */}
@@ -622,6 +671,17 @@ export const TransactionsPage = () => {
               <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs flex items-center gap-2">
                 <AlertCircle className="w-4 h-4" />
                 <span>{modalError}</span>
+              </div>
+            )}
+
+            {possibleDuplicates.length > 0 && (
+              <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
+                <p className="flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4" />Possible duplicate transaction found</p>
+                <p className="mt-1">{possibleDuplicates.map((item) => `${item.title} · ₹${Number(item.amount).toFixed(2)}`).join('; ')}</p>
+                <label className="mt-2 flex items-start gap-2">
+                  <input type="checkbox" checked={duplicateConfirmed} onChange={(event) => setDuplicateConfirmed(event.target.checked)} className="mt-0.5 accent-amber-600" />
+                  <span>I checked the existing transaction and still want to save this one.</span>
+                </label>
               </div>
             )}
 

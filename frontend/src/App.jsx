@@ -20,6 +20,7 @@ const RecurringPage = lazyPage(() => import('./pages/RecurringPage'), 'Recurring
 const ReportsPage = lazyPage(() => import('./pages/ReportsPage'), 'ReportsPage');
 const CategoriesPage = lazyPage(() => import('./pages/CategoriesPage'), 'CategoriesPage');
 const ProfilePage = lazyPage(() => import('./pages/ProfilePage'), 'ProfilePage');
+const AIAssistantPage = lazyPage(() => import('./pages/AIAssistantPage'), 'AIAssistantPage');
 
 const PageLoading = () => (
   <div className="min-h-screen bg-dark-bg flex items-center justify-center">
@@ -157,6 +158,14 @@ export const App = () => {
               element={
                 <ProtectedRoute>
                   <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/assistant"
+              element={
+                <ProtectedRoute>
+                  <AIAssistantPage />
                 </ProtectedRoute>
               }
             />
