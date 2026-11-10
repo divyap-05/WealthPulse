@@ -3,10 +3,12 @@ import { AlertTriangle, FileText, LoaderCircle, ScanLine, ShieldCheck, Upload, X
 import { extractDocumentText } from '../../services/aiDocuments';
 import { apiRequest } from '../../services/api';
 
-export const ReceiptScanner = ({ onClose, onUseDrafts }) => {
+export const ReceiptScanner = ({ onClose, onAddDrafts }) => {
   const [file, setFile] = useState(null);
   const [text, setText] = useState('');
   const [drafts, setDrafts] = useState([]);
+  const [selectedDrafts, setSelectedDrafts] = useState({});
+  const [importResults, setImportResults] = useState(null);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -18,6 +20,8 @@ export const ReceiptScanner = ({ onClose, onUseDrafts }) => {
     setFile(selected);
     setText('');
     setDrafts([]);
+    setSelectedDrafts({});
+    setImportResults(null);
     setError('');
     setBusy(true);
     setProgress(0);
@@ -40,9 +44,27 @@ export const ReceiptScanner = ({ onClose, onUseDrafts }) => {
         method: 'POST',
         body: JSON.stringify({ text }),
       });
-      setDrafts(response.data.drafts || []);
+      const extractedDrafts = (response.data.drafts || []).map((draft, index) => ({ ...draft, scanId: index }));
+      setDrafts(extractedDrafts);
+      setSelectedDrafts(Object.fromEntries(extractedDrafts.map((draft) => [draft.scanId, !draft.possibleDuplicates?.length])));
+      setImportResults(null);
     } catch (err) {
       setError(err.message || 'The receipt scan failed. You can enter the transaction manually.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAddSelected = async () => {
+    const selected = drafts.filter((draft) => selectedDrafts[draft.scanId] && importResults?.[draft.scanId]?.status !== 'added');
+    if (!selected.length) return;
+    setBusy(true);
+    setError('');
+    try {
+      const results = await onAddDrafts(selected);
+      setImportResults((current) => ({ ...current, ...Object.fromEntries(results.map(({ scanId, ...result }) => [scanId, result])) }));
+    } catch (err) {
+      setError(err.message || 'Some transactions could not be added. You can retry the selected entries.');
     } finally {
       setBusy(false);
     }
@@ -100,14 +122,23 @@ export const ReceiptScanner = ({ onClose, onUseDrafts }) => {
             <div className="max-h-64 space-y-2 overflow-y-auto">
               {drafts.map((draft, index) => (
                 <div key={`${draft.date}-${draft.amount}-${index}`} className="rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-white/10 dark:bg-black/20">
-                  <div className="flex items-start justify-between gap-3"><span className="font-semibold">{index + 1}. {draft.title}</span><span className="shrink-0 font-bold">{draft.amount == null ? 'Amount needs review' : `₹${Number(draft.amount).toFixed(2)}`}</span></div>
+                  <div className="flex items-start justify-between gap-3">
+                    <label className="flex min-w-0 items-start gap-2 font-semibold">
+                      <input type="checkbox" checked={Boolean(selectedDrafts[draft.scanId])} disabled={importResults?.[draft.scanId]?.status === 'added'} onChange={(event) => setSelectedDrafts((current) => ({ ...current, [draft.scanId]: event.target.checked }))} className="mt-1 accent-violet-600" />
+                      <span>{index + 1}. {draft.title}</span>
+                    </label>
+                    <span className="shrink-0 font-bold">{draft.amount == null ? 'Amount needs review' : `₹${Number(draft.amount).toFixed(2)}`}</span>
+                  </div>
                   <div className="mt-1 text-xs capitalize text-slate-500 dark:text-slate-400">{draft.type} · {draft.date || 'Date not found'} · {draft.categoryName || 'No category match'} · confidence {draft.confidence == null ? 'n/a' : `${Math.round(draft.confidence * 100)}%`}{draft.needsReview ? ' · check details' : ''}</div>
                   {draft.possibleDuplicates?.length > 0 && <p className="mt-1 flex items-start gap-1 text-xs font-semibold text-amber-700 dark:text-amber-300"><AlertTriangle className="h-4 w-4 shrink-0" />Possible duplicate: {draft.possibleDuplicates.map((item) => item.title).join(', ')}</p>}
+                  {importResults?.[draft.scanId] ? <p className={`mt-1 text-xs font-bold ${importResults[draft.scanId].status === 'added' ? 'text-emerald-600 dark:text-emerald-300' : 'text-red-600 dark:text-red-300'}`}>{importResults[draft.scanId].status === 'added' ? 'Added to transactions' : `Not added: ${importResults[draft.scanId].message}`}</p> : importResults && !selectedDrafts[draft.scanId] && <p className="mt-1 text-xs font-bold text-amber-700 dark:text-amber-300">{draft.possibleDuplicates?.length ? 'Skipped as a possible duplicate' : 'Not selected'}</p>}
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Each entry opens separately for review and confirmation before it is saved.</p>
-            <button type="button" onClick={() => onUseDrafts(drafts)} className="mt-4 w-full rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-purple-600">Review and add entries</button>
+            <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">Possible duplicates start unchecked. Choose which entries to add; all selected entries are processed together. Added entries are marked above.</p>
+            <button type="button" onClick={handleAddSelected} disabled={busy || !drafts.some((draft) => selectedDrafts[draft.scanId] && importResults?.[draft.scanId]?.status !== 'added')} className="mt-4 w-full rounded-xl bg-brand-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-purple-600 disabled:cursor-not-allowed disabled:opacity-50">
+              {busy ? 'Adding transactions…' : `Add ${drafts.filter((draft) => selectedDrafts[draft.scanId] && importResults?.[draft.scanId]?.status !== 'added').length} selected transactions`}
+            </button>
           </div>
         )}
 

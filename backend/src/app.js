@@ -19,6 +19,7 @@ import { authLimiter } from './middleware/rateLimit.js';
 
 export const createApp = () => {
   const app = express();
+  app.disable('x-powered-by');
 
   // Security headers
   app.use(helmet());
@@ -62,7 +63,6 @@ export const createApp = () => {
       status: 'ok',
       service: 'Expense Tracker API',
       timestamp: new Date().toISOString(),
-      emailConfigured: config.email.isConfigured,
     });
   });
 

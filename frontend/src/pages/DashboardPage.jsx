@@ -4,6 +4,7 @@ import {
   TrendingDown,
   Wallet,
   PiggyBank,
+  Plus,
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
@@ -131,36 +132,42 @@ export const DashboardPage = () => {
             </div>
 
             {/* Total Income */}
-            <div className="p-6 rounded-2xl glass-card border border-white/10 hover:border-emerald-500/30 transition-all">
+            <Link to="/transactions?type=income&action=add" aria-label="Add an income transaction" className="block p-6 rounded-2xl glass-card border border-white/10 hover:border-emerald-500/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Total Income
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                <div className="flex items-center gap-2">
+                <span className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center" aria-hidden="true">
                   <ArrowUpRight className="w-4 h-4" />
+                </span>
+                <span className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center" aria-hidden="true"><Plus className="w-4 h-4" /></span>
                 </div>
               </div>
               <div className="text-2xl font-black tracking-tight text-emerald-400 mb-1">
                 {formatINR(metrics.totalIncome)}
               </div>
-              <p className="text-[11px] text-slate-400">All recorded inflows for period</p>
-            </div>
+              <p className="text-[11px] text-slate-400">View or add income transactions</p>
+            </Link>
 
             {/* Total Expenses */}
-            <div className="p-6 rounded-2xl glass-card border border-white/10 hover:border-brand-rose/30 transition-all">
+            <Link to="/transactions?type=expense&action=add" aria-label="Add an expense transaction" className="block p-6 rounded-2xl glass-card border border-white/10 hover:border-brand-rose/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-rose">
               <div className="flex items-center justify-between mb-4">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   Total Expenses
                 </span>
-                <div className="w-9 h-9 rounded-xl bg-pink-500/20 text-brand-rose flex items-center justify-center">
+                <div className="flex items-center gap-2">
+                <span className="w-9 h-9 rounded-xl bg-pink-500/20 text-brand-rose flex items-center justify-center" aria-hidden="true">
                   <ArrowDownRight className="w-4 h-4" />
+                </span>
+                <span className="w-8 h-8 rounded-lg bg-pink-500/15 text-brand-rose flex items-center justify-center" aria-hidden="true"><Plus className="w-4 h-4" /></span>
                 </div>
               </div>
               <div className="text-2xl font-black tracking-tight text-brand-rose mb-1">
                 {formatINR(metrics.totalExpenses)}
               </div>
-              <p className="text-[11px] text-slate-400">Outflows across categories</p>
-            </div>
+              <p className="text-[11px] text-slate-400">View or add expense transactions</p>
+            </Link>
 
             {/* Savings Rate */}
             <div className="p-6 rounded-2xl glass-card border border-white/10 hover:border-purple-500/30 transition-all">

@@ -4,10 +4,18 @@ import { generateToken, setAuthCookie, clearAuthCookie } from '../utils/token.js
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService.js';
 import { seedUserDefaults } from '../services/userSeedService.js';
 import { config } from '../config/env.js';
+import { DEMO_USER_EMAIL } from '../utils/seedDemo.js';
 
 export const register = async (req, res, next) => {
   try {
     const { name, email, password } = req.body;
+
+    if (email === DEMO_USER_EMAIL) {
+      return res.status(409).json({
+        success: false,
+        message: 'This email address is reserved.',
+      });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {

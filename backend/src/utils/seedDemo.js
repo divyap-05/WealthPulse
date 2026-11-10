@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import User from '../models/User.js';
 import Category from '../models/Category.js';
 import PaymentMethod from '../models/PaymentMethod.js';
@@ -17,12 +18,19 @@ const initializeDemoUserAndData = async () => {
   let demoUser = await User.findOne({ email: DEMO_USER_EMAIL });
 
   if (demoUser) {
+    if (!demoUser.isDemo) {
+      const error = new Error('Demo account setup is unavailable.');
+      error.statusCode = 503;
+      error.isOperational = true;
+      throw error;
+    }
     return demoUser;
   } else {
     demoUser = new User({
       name: 'Aarav Sharma (Demo)',
       email: DEMO_USER_EMAIL,
-      password: 'DemoPassword123!Secure',
+      // Demo users authenticate through the one-click endpoint, not a reusable source credential.
+      password: crypto.randomBytes(48).toString('hex'),
       isVerified: true,
       isDemo: true,
       preferences: {
@@ -38,6 +46,12 @@ const initializeDemoUserAndData = async () => {
       if (error.code !== 11000) throw error;
       demoUser = await User.findOne({ email: DEMO_USER_EMAIL });
       if (!demoUser) throw error;
+      if (!demoUser.isDemo) {
+        const unavailable = new Error('Demo account setup is unavailable.');
+        unavailable.statusCode = 503;
+        unavailable.isOperational = true;
+        throw unavailable;
+      }
       return demoUser;
     }
   }

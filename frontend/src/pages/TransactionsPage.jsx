@@ -16,11 +16,11 @@ import {
   Download,
   FileText,
   ScanLine,
-  AlertTriangle,
 } from 'lucide-react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { apiDownload, apiRequest } from '../services/api';
 import { formatINR, formatDate, toRupees } from '../utils/formatters';
+import { useSearchParams } from 'react-router-dom';
 
 const ReceiptScanner = React.lazy(() => import('../components/transactions/ReceiptScanner').then((module) => ({ default: module.ReceiptScanner })));
 
@@ -40,6 +40,8 @@ const formatExportDate = (value) => new Intl.DateTimeFormat('en-IN', {
 }).format(new Date(`${value}T00:00:00.000Z`));
 
 export const TransactionsPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedType = ['income', 'expense'].includes(searchParams.get('type')) ? searchParams.get('type') : '';
   const [transactions, setTransactions] = useState([]);
   const [categories, setCategories] = useState([]);
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -54,7 +56,7 @@ export const TransactionsPage = () => {
 
   // Filters & Search
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState(requestedType);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [sortBy, setSortBy] = useState('date');
   const [sortOrder, setSortOrder] = useState('desc');
@@ -65,15 +67,12 @@ export const TransactionsPage = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [scanQueue, setScanQueue] = useState([]);
-  const [possibleDuplicates, setPossibleDuplicates] = useState([]);
-  const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
 
   // Form Fields
   const [formData, setFormData] = useState({
     title: '',
     amount: '',
-    type: 'expense',
+    type: requestedType || 'expense',
     category: '',
     paymentMethod: '',
     date: new Date().toISOString().split('T')[0],
@@ -116,16 +115,27 @@ export const TransactionsPage = () => {
     loadData(1);
   }, [search, typeFilter, categoryFilter, sortBy, sortOrder]);
 
+  useEffect(() => {
+    if (searchParams.get('action') !== 'add' || loading) return;
+    setFormData((current) => ({
+      ...current,
+      type: requestedType || current.type,
+      category: current.category || categories.find((category) => category.type === requestedType)?._id || '',
+      paymentMethod: current.paymentMethod || paymentMethods[0]?._id || '',
+    }));
+    setIsModalOpen(true);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('action');
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams, loading, categories, paymentMethods, requestedType]);
+
   const handleOpenAddModal = () => {
-    setScanQueue([]);
     setEditingTx(null);
-    setPossibleDuplicates([]);
-    setDuplicateConfirmed(false);
     setFormData({
       title: '',
       amount: '',
-      type: 'expense',
-      category: categories.find((c) => c.type === 'expense')?._id || '',
+      type: typeFilter || 'expense',
+      category: categories.find((c) => c.type === (typeFilter || 'expense'))?._id || '',
       paymentMethod: paymentMethods[0]?._id || '',
       date: new Date().toISOString().split('T')[0],
       note: '',
@@ -135,10 +145,7 @@ export const TransactionsPage = () => {
   };
 
   const handleOpenEditModal = (tx) => {
-    setScanQueue([]);
     setEditingTx(tx);
-    setPossibleDuplicates([]);
-    setDuplicateConfirmed(false);
     setFormData({
       title: tx.title,
       amount: toRupees(tx.amount),
@@ -152,26 +159,38 @@ export const TransactionsPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleUseScannedDrafts = (drafts) => {
-    const [draft, ...remaining] = drafts;
-    const defaultCategory = categories.find((category) => category._id === draft.categoryId)
-      || categories.find((category) => category.type === draft.type);
-    setScanQueue(remaining);
-    setEditingTx(null);
-    setFormData({
-      title: draft.title,
-      amount: draft.amount == null ? '' : String(draft.amount),
-      type: draft.type,
-      category: defaultCategory?._id || '',
-      paymentMethod: paymentMethods[0]?._id || '',
-      date: draft.date || new Date().toISOString().split('T')[0],
-      note: draft.note || '',
-    });
-    setPossibleDuplicates(draft.possibleDuplicates || []);
-    setDuplicateConfirmed(false);
-    setModalError('');
-    setScannerOpen(false);
-    setIsModalOpen(true);
+  const handleAddScannedDrafts = async (drafts) => {
+    const results = [];
+    for (let start = 0; start < drafts.length; start += 5) {
+      const chunk = drafts.slice(start, start + 5);
+      const chunkResults = await Promise.all(chunk.map(async (draft) => {
+        const category = categories.find((item) => item._id === draft.categoryId)
+          || categories.find((item) => item.type === draft.type);
+        if (!category) {
+          return { scanId: draft.scanId, status: 'failed', message: `No ${draft.type} category is available.` };
+        }
+        try {
+          await apiRequest('/transactions', {
+            method: 'POST',
+            body: JSON.stringify({
+              title: draft.title,
+              amount: draft.amount,
+              type: draft.type,
+              category: category._id,
+              paymentMethod: paymentMethods[0]?._id || null,
+              date: draft.date || new Date().toISOString().split('T')[0],
+              note: draft.note || '',
+            }),
+          });
+          return { scanId: draft.scanId, status: 'added' };
+        } catch (err) {
+          return { scanId: draft.scanId, status: 'failed', message: err.message || 'Could not save this entry.' };
+        }
+      }));
+      results.push(...chunkResults);
+    }
+    await loadData(pagination.page);
+    return results;
   };
 
   const handleFormSubmit = async (e) => {
@@ -182,11 +201,6 @@ export const TransactionsPage = () => {
       setModalError('Please fill in title, amount, and select a category.');
       return;
     }
-    if (possibleDuplicates.length > 0 && !duplicateConfirmed) {
-      setModalError('Review the possible duplicate warning and confirm before saving.');
-      return;
-    }
-
     setModalLoading(true);
 
     try {
@@ -212,26 +226,7 @@ export const TransactionsPage = () => {
         });
       }
 
-      if (scanQueue.length > 0) {
-        const [nextDraft, ...remaining] = scanQueue;
-        const nextCategory = categories.find((category) => category._id === nextDraft.categoryId)
-          || categories.find((category) => category.type === nextDraft.type);
-        setScanQueue(remaining);
-        setFormData({
-          title: nextDraft.title,
-          amount: nextDraft.amount == null ? '' : String(nextDraft.amount),
-          type: nextDraft.type,
-          category: nextCategory?._id || '',
-          paymentMethod: paymentMethods[0]?._id || '',
-          date: nextDraft.date || new Date().toISOString().split('T')[0],
-          note: nextDraft.note || '',
-        });
-        setPossibleDuplicates(nextDraft.possibleDuplicates || []);
-        setDuplicateConfirmed(false);
-        setModalError('');
-      } else {
-        setIsModalOpen(false);
-      }
+      setIsModalOpen(false);
       loadData(pagination.page);
     } catch (err) {
       setModalError(err.message || 'Error saving transaction.');
@@ -504,7 +499,7 @@ export const TransactionsPage = () => {
 
       {scannerOpen && (
         <Suspense fallback={<div role="status" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 text-white">Loading document scanner…</div>}>
-          <ReceiptScanner onClose={() => setScannerOpen(false)} onUseDrafts={handleUseScannedDrafts} />
+          <ReceiptScanner onClose={() => setScannerOpen(false)} onAddDrafts={handleAddScannedDrafts} />
         </Suspense>
       )}
 
@@ -680,13 +675,13 @@ export const TransactionsPage = () => {
       {/* Add / Edit Transaction Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => { setScanQueue([]); setIsModalOpen(false); }} />
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
           <div className="relative w-full max-w-lg glass-surface p-6 rounded-2xl border border-white/10 shadow-2xl z-10">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-white">
                 {editingTx ? 'Edit Transaction' : 'Record New Transaction'}
               </h3>
-              <button onClick={() => { setScanQueue([]); setIsModalOpen(false); }} className="text-slate-400 hover:text-white">
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -698,16 +693,6 @@ export const TransactionsPage = () => {
               </div>
             )}
 
-            {possibleDuplicates.length > 0 && (
-              <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
-                <p className="flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4" />Possible duplicate transaction found</p>
-                <p className="mt-1">{possibleDuplicates.map((item) => `${item.title} · ₹${Number(item.amount).toFixed(2)}`).join('; ')}</p>
-                <label className="mt-2 flex items-start gap-2">
-                  <input type="checkbox" checked={duplicateConfirmed} onChange={(event) => setDuplicateConfirmed(event.target.checked)} className="mt-0.5 accent-amber-600" />
-                  <span>I checked the existing transaction and still want to save this one.</span>
-                </label>
-              </div>
-            )}
 
             <form onSubmit={handleFormSubmit} className="space-y-4 text-xs">
               {/* Type Switcher */}
@@ -842,7 +827,7 @@ export const TransactionsPage = () => {
               <div className="flex items-center justify-end gap-3 pt-3">
                 <button
                   type="button"
-                  onClick={() => { setScanQueue([]); setIsModalOpen(false); }}
+                  onClick={() => setIsModalOpen(false)}
                   className="px-4 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 font-medium"
                 >
                   Cancel
