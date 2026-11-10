@@ -3,7 +3,15 @@ import { config } from '../config/env.js';
 const MODEL = 'gemini-3.1-flash-lite';
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
-export const redactSensitiveText = (value) => String(value || '')
+const keepDocumentEnding = (text, maxCharacters = 12000) => {
+  if (text.length <= maxCharacters) return text;
+  const marker = '\n[Middle of document omitted; ending follows]\n';
+  const contentLength = maxCharacters - marker.length;
+  const firstPart = Math.floor(contentLength * 0.65);
+  return `${text.slice(0, firstPart).trimEnd()}${marker}${text.slice(-(contentLength - firstPart)).trimStart()}`;
+};
+
+const redactText = (value) => String(value || '')
   .replace(/\b(?:account|a\/c)\s*(?:no\.?|number|#)?\s*[:=-]?\s*[0-9x*][0-9x*\s-]{5,24}/gi, '[REDACTED ACCOUNT]')
   .replace(/\b[A-Z]{4}0[A-Z0-9]{6}\b/gi, '[REDACTED IFSC]')
   .replace(/\b\d{4}[ -]?\d{4}[ -]?\d{4}\b/g, '[REDACTED ID]')
@@ -14,8 +22,9 @@ export const redactSensitiveText = (value) => String(value || '')
   .replace(/\b[\w.-]{2,}@[\w.-]{2,}\b/gi, '[REDACTED UPI]')
   .replace(/\b(?:(?:billing|shipping|home|office|customer)\s+)?address\s*[:=-]?[^\r\n]*/gi, '[REDACTED ADDRESS]')
   .replace(/\b(?:customer name|account holder|card holder|cardholder|name)\s*[:=-]\s*[^\r\n]*/gi, '[REDACTED NAME]')
-  .replace(/\b(?:transaction|reference|ref)\s*(?:id|no\.?|number|#)\s*[:=-]?\s*[A-Z0-9-]{6,}\b/gi, '[REDACTED REFERENCE]')
-  .slice(0, 12000);
+  .replace(/\b(?:transaction|reference|ref)\s*(?:id|no\.?|number|#)\s*[:=-]?\s*[A-Z0-9-]{6,}\b/gi, '[REDACTED REFERENCE]');
+
+export const redactSensitiveText = (value) => keepDocumentEnding(redactText(value));
 
 export const parseModelJson = (text) => {
   const normalized = String(text || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');

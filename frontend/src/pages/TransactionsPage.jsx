@@ -65,6 +65,7 @@ export const TransactionsPage = () => {
   const [modalLoading, setModalLoading] = useState(false);
   const [modalError, setModalError] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [scanQueue, setScanQueue] = useState([]);
   const [possibleDuplicates, setPossibleDuplicates] = useState([]);
   const [duplicateConfirmed, setDuplicateConfirmed] = useState(false);
 
@@ -116,6 +117,7 @@ export const TransactionsPage = () => {
   }, [search, typeFilter, categoryFilter, sortBy, sortOrder]);
 
   const handleOpenAddModal = () => {
+    setScanQueue([]);
     setEditingTx(null);
     setPossibleDuplicates([]);
     setDuplicateConfirmed(false);
@@ -133,6 +135,7 @@ export const TransactionsPage = () => {
   };
 
   const handleOpenEditModal = (tx) => {
+    setScanQueue([]);
     setEditingTx(tx);
     setPossibleDuplicates([]);
     setDuplicateConfirmed(false);
@@ -149,20 +152,22 @@ export const TransactionsPage = () => {
     setIsModalOpen(true);
   };
 
-  const handleUseScannedDraft = (draft, duplicates) => {
+  const handleUseScannedDrafts = (drafts) => {
+    const [draft, ...remaining] = drafts;
     const defaultCategory = categories.find((category) => category._id === draft.categoryId)
       || categories.find((category) => category.type === draft.type);
+    setScanQueue(remaining);
     setEditingTx(null);
     setFormData({
       title: draft.title,
-      amount: String(draft.amount),
+      amount: draft.amount == null ? '' : String(draft.amount),
       type: draft.type,
       category: defaultCategory?._id || '',
       paymentMethod: paymentMethods[0]?._id || '',
       date: draft.date || new Date().toISOString().split('T')[0],
       note: draft.note || '',
     });
-    setPossibleDuplicates(duplicates);
+    setPossibleDuplicates(draft.possibleDuplicates || []);
     setDuplicateConfirmed(false);
     setModalError('');
     setScannerOpen(false);
@@ -207,7 +212,26 @@ export const TransactionsPage = () => {
         });
       }
 
-      setIsModalOpen(false);
+      if (scanQueue.length > 0) {
+        const [nextDraft, ...remaining] = scanQueue;
+        const nextCategory = categories.find((category) => category._id === nextDraft.categoryId)
+          || categories.find((category) => category.type === nextDraft.type);
+        setScanQueue(remaining);
+        setFormData({
+          title: nextDraft.title,
+          amount: nextDraft.amount == null ? '' : String(nextDraft.amount),
+          type: nextDraft.type,
+          category: nextCategory?._id || '',
+          paymentMethod: paymentMethods[0]?._id || '',
+          date: nextDraft.date || new Date().toISOString().split('T')[0],
+          note: nextDraft.note || '',
+        });
+        setPossibleDuplicates(nextDraft.possibleDuplicates || []);
+        setDuplicateConfirmed(false);
+        setModalError('');
+      } else {
+        setIsModalOpen(false);
+      }
       loadData(pagination.page);
     } catch (err) {
       setModalError(err.message || 'Error saving transaction.');
@@ -480,7 +504,7 @@ export const TransactionsPage = () => {
 
       {scannerOpen && (
         <Suspense fallback={<div role="status" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 text-white">Loading document scanner…</div>}>
-          <ReceiptScanner onClose={() => setScannerOpen(false)} onUseDraft={handleUseScannedDraft} />
+          <ReceiptScanner onClose={() => setScannerOpen(false)} onUseDrafts={handleUseScannedDrafts} />
         </Suspense>
       )}
 
@@ -656,13 +680,13 @@ export const TransactionsPage = () => {
       {/* Add / Edit Transaction Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={() => { setScanQueue([]); setIsModalOpen(false); }} />
           <div className="relative w-full max-w-lg glass-surface p-6 rounded-2xl border border-white/10 shadow-2xl z-10">
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-white">
                 {editingTx ? 'Edit Transaction' : 'Record New Transaction'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white">
+              <button onClick={() => { setScanQueue([]); setIsModalOpen(false); }} className="text-slate-400 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -818,7 +842,7 @@ export const TransactionsPage = () => {
               <div className="flex items-center justify-end gap-3 pt-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => { setScanQueue([]); setIsModalOpen(false); }}
                   className="px-4 py-2.5 rounded-xl text-slate-300 hover:bg-white/5 font-medium"
                 >
                   Cancel

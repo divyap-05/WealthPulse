@@ -7,6 +7,19 @@ const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_PDF_PAGES = 6;
 const MAX_TEXT_BYTES = 12000;
 
+const keepDocumentEnding = (value, maxBytes = MAX_TEXT_BYTES) => {
+  const encoder = new TextEncoder();
+  const bytes = encoder.encode(value);
+  if (bytes.length <= maxBytes) return value;
+
+  const marker = '\n[Middle of document omitted; ending follows]\n';
+  const contentBudget = maxBytes - encoder.encode(marker).length;
+  const firstPart = Math.floor(contentBudget * 0.65);
+  const lastPart = contentBudget - firstPart;
+  const decoder = new TextDecoder();
+  return `${decoder.decode(bytes.slice(0, firstPart)).trimEnd()}${marker}${decoder.decode(bytes.slice(-lastPart)).trimStart()}`;
+};
+
 export const sanitizeDocumentText = (value) => {
   const text = String(value || '')
     .replace(/\b(?:account|a\/c)\s*(?:no\.?|number|#)?\s*[:=-]?\s*[0-9x*][0-9x* \t-]{5,24}/gi, '[REDACTED ACCOUNT]')
@@ -22,8 +35,7 @@ export const sanitizeDocumentText = (value) => {
     .replace(/\b(?:transaction|reference|ref)\s*(?:id|no\.?|number|#)\s*[:=-]?\s*[A-Z0-9-]{6,}\b/gi, '[REDACTED REFERENCE]')
     .replace(/\n{3,}/g, '\n\n');
 
-  const bytes = new TextEncoder().encode(text).slice(0, MAX_TEXT_BYTES);
-  return new TextDecoder().decode(bytes).trim();
+  return keepDocumentEnding(text).trim();
 };
 
 const readSignature = async (file) => new Uint8Array(await file.slice(0, 16).arrayBuffer());
