@@ -7,7 +7,14 @@ import { chatSchema, receiptScanSchema } from '../validators/aiValidator.js';
 
 const router = Router();
 router.use(protect);
-router.post('/chat', aiLimiter, validate(chatSchema), askFinancialCoach);
-router.post('/receipt/scan', aiLimiter, validate(receiptScanSchema), scanReceiptText);
+const blockDemoAI = (req, res, next) => {
+  if (req.user?.isDemo) {
+    return res.status(403).json({ success: false, message: 'AI services are disabled for demo accounts.' });
+  }
+  next();
+};
+
+router.post('/chat', blockDemoAI, aiLimiter, validate(chatSchema), askFinancialCoach);
+router.post('/receipt/scan', blockDemoAI, aiLimiter, validate(receiptScanSchema), scanReceiptText);
 
 export default router;

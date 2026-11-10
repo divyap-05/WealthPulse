@@ -1,6 +1,6 @@
-# WealthPulse
+# WealthPulse — AI-Powered Personal Finance Tracker
 
-WealthPulse is a personal finance tracker for recording income and expenses, setting budgets and savings goals, and reviewing monthly cash flow. It includes a dashboard, reports, recurring transaction rules, and downloadable monthly transaction reports.
+WealthPulse is an AI-assisted personal finance tracker for recording income and expenses, setting budgets and savings goals, and reviewing cash flow. It includes a dashboard, reports, recurring transaction rules, monthly CSV/PDF exports, an AI transaction document scanner, and an AI Money Coach.
 
 **Live application:** [wealth-pulse-money-manager.vercel.app](https://wealth-pulse-money-manager.vercel.app/)
 
@@ -15,25 +15,28 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 - Savings goals with contributions and withdrawals.
 - Recurring transaction rules for regular income and expenses.
 - Dashboard **summaries**, **charts**, **reports**, and **rule-based financial insights**. Dashboard insights are calculated directly from account data and do not use the optional Gemini service.
+- Quick dashboard shortcuts: select the income or expense total card to open a new transaction form with that transaction type preselected.
 - Monthly transaction exports in **CSV** and **PDF**. The PDF preview includes total income, total expenses, and net cash flow.
 - Interactive demo account and **dark** and **light** themes.
-- AI receipt and bill scanning with browser-side PDF/image text extraction, sensitive-data masking, duplicate warnings, and a review-before-save transaction draft.
-- AI Money Coach that explains calculations based on the signed-in user's aggregated income, spending, budgets, and goals.
-- Optional email verification and password recovery when SMTP delivery is configured. Without SMTP, recovery is unavailable; signed-in users can change their password in Profile settings.
+- **AI transaction document scanner:** extracts PDF text or runs image OCR in your browser, then uses Gemini to identify individual transaction entries. Review the list, leave possible duplicates unchecked or select them if needed, and add selected entries together. Imported, skipped, and failed entries are marked in the review list.
+- **AI Money Coach:** ask about spending, cash flow, budgets, and savings. Gemini explains calculations based on a summary of the signed-in user's own financial data. Demo accounts use scripted offline sample replies and a sample scanner preview; neither sends requests to Gemini or saves sample transactions.
+- Email verification and password recovery are optional and require backend SMTP configuration. Without SMTP configured, those email features are unavailable; signed-in users can still change their password in Profile settings.
 
 ## Technology stack
 
 | Area | Technologies |
 | --- | --- |
 | Frontend | **React 18, Vite, React Router, Tailwind CSS, Recharts, Lucide React, PDF.js, Tesseract.js** |
-| Backend | **Node.js, Express 4, Mongoose, Google Gemini API (`gemini-3.1-flash-lite`, optional free tier)** |
+| Backend | **Node.js, Express 4, Mongoose** |
 | Database | **MongoDB Atlas** |
+| AI integration | **Google Gemini API (`gemini-3.1-flash-lite`) for transaction extraction and the Money Coach; API calls and key stay on the backend** |
+| Document processing | **PDF.js for PDF text extraction and Tesseract.js for browser-side image/scanned-page OCR** |
 | Validation | **Zod** |
 | Authentication | **bcryptjs password hashing, JSON Web Tokens, HTTP-only cookies** |
 | Email | **Nodemailer with SMTP configuration** |
 | Security | **Helmet, CORS, express-rate-limit** |
 | Backend checks | **Node.js test runner, Supertest, mongodb-memory-server** |
- Version Control | **Git, GitHub** |
+| Version Control | **Git, GitHub** |
 
 
 ## Screenshots
@@ -50,6 +53,16 @@ WealthPulse is a personal finance tracker for recording income and expenses, set
 
 ![WealthPulse dashboard1](screenshots/dashboard1.png)
 ![WealthPulse dashboard2](screenshots/dashboard2.png)
+
+### AI transaction scanner
+
+<!-- Add a screenshot of the scanner's extracted transaction list and duplicate indicators. -->
+![WealthPulse AI transaction scanner](screenshots/ai-transaction-scanner.png)
+
+### AI Money Coach
+
+<!-- Add a screenshot of the AI Money Coach conversation screen. -->
+![WealthPulse AI Money Coach](screenshots/ai-money-coach.png)
 
 ### Transactions and downloads
 

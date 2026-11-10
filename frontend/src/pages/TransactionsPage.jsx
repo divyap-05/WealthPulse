@@ -21,6 +21,7 @@ import { AppLayout } from '../components/layout/AppLayout';
 import { apiDownload, apiRequest } from '../services/api';
 import { formatINR, formatDate, toRupees } from '../utils/formatters';
 import { useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const ReceiptScanner = React.lazy(() => import('../components/transactions/ReceiptScanner').then((module) => ({ default: module.ReceiptScanner })));
 
@@ -40,6 +41,8 @@ const formatExportDate = (value) => new Intl.DateTimeFormat('en-IN', {
 }).format(new Date(`${value}T00:00:00.000Z`));
 
 export const TransactionsPage = () => {
+  const { user } = useAuth();
+  const isDemo = Boolean(user?.isDemo);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedType = ['income', 'expense'].includes(searchParams.get('type')) ? searchParams.get('type') : '';
   const [transactions, setTransactions] = useState([]);
@@ -475,10 +478,11 @@ export const TransactionsPage = () => {
           <button
             type="button"
             onClick={() => setScannerOpen(true)}
+            title={isDemo ? 'Open the offline scanner demo' : 'Scan a document with AI'}
             className="px-4 py-2.5 rounded-xl border border-brand-primary/40 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary dark:text-brand-secondary font-semibold text-sm transition-all flex items-center gap-2"
           >
             <ScanLine className="w-4 h-4" />
-            <span>Scan receipt</span>
+            <span>{isDemo ? 'Try scanner demo' : 'Scan receipt'}</span>
           </button>
           <button
             onClick={handleOpenAddModal}
@@ -499,7 +503,7 @@ export const TransactionsPage = () => {
 
       {scannerOpen && (
         <Suspense fallback={<div role="status" className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 text-white">Loading document scanner…</div>}>
-          <ReceiptScanner onClose={() => setScannerOpen(false)} onAddDrafts={handleAddScannedDrafts} />
+          <ReceiptScanner onClose={() => setScannerOpen(false)} onAddDrafts={handleAddScannedDrafts} isDemo={isDemo} />
         </Suspense>
       )}
 
