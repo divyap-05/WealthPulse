@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       if (authStateRevision.current === requestRevision) setUser(null);
     } finally {
-      setLoading(false);
+      if (authStateRevision.current === requestRevision) setLoading(false);
     }
   }, []);
 
@@ -53,12 +53,14 @@ export const AuthProvider = ({ children }) => {
     // cannot overwrite the demo identity after this transition succeeds.
     const requestRevision = authStateRevision.current + 1;
     authStateRevision.current = requestRevision;
+    setLoading(true);
     try {
       const res = await apiRequest('/demo/enter', {
         method: 'POST',
       });
       if (authStateRevision.current === requestRevision && res.success && res.user) {
         setUser(res.user);
+        setLoading(false);
       }
       return res;
     } catch (error) {
